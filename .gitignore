@@ -1,0 +1,74 @@
+# Dependencies (very large — do not upload to GitHub)
+node_modules/
+.pnp
+.pnp.js
+
+# Build / production output
+dist/
+.output/
+.vinxi/
+.nitro/
+.wrangler/
+
+# Framework & tooling caches
+.tanstack/
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Environment secrets (never commit)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Editor & OS junk
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Large archives & binaries
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.iso
+*.exe
+*.dll
+*.dmg
+
+# Large media (keep source images in src/assets)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.mp3
+*.wav
+*.flac
+
+# Firebase / debug dumps
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
