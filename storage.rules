@@ -1,0 +1,201 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+// هذه القواعد تحدد من يمكنه قراءة وكتابة الملفات في Firebase Storage
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ===== Helper Functions =====
+    
+    // التحقق من هوية المستخدم
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // التحقق من ملكية المستخدم للملف
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // التحقق من صحة نوع الملف للصور
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+    }
+    
+    // التحقق من صحة نوع الملف للمستندات
+    function isValidDocumentType() {
+      return request.resource.contentType.matches('(image/(jpeg|jpg|png)|application/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document))');
+    }
+    
+    // التحقق من حجم الملف (5MB للصور)
+    function isValidImageSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+    
+    // التحقق من حجم الملف (10MB للمستندات)
+    function isValidDocumentSize() {
+      return request.resource.size <= 10 * 1024 * 1024;
+    }
+    
+    // التحقق من دور المستخدم (admin أو moderator)
+    function isAdminOrModerator() {
+      return request.auth != null && 
+             (request.auth.token.role == 'admin' || request.auth.token.role == 'moderator');
+    }
+    
+    // ===== Listings Images Rules =====
+    
+    // صور الإعلانات: listings/{userId}/{listingId}/images/{imageId}
+    match /listings/{userId}/{listingId}/images/{imageId} {
+      // القراءة: مسموحة للجميع (الصور عامة)
+      allow read: if true;
+      
+      // الكتابة: مسموحة للمالك فقط مع شروط الصورة
+      allow write: if isOwner(userId) && 
+                      isValidImageType() && 
+                      isValidImageSize();
+      
+      // الحذف: مسموح للمالك أو المشرفين
+      allow delete: if isOwner(userId) || isAdminOrModerator();
+    }
+    
+    // ===== User Profile Images Rules =====
+    
+    // صور الملفات الشخصية: users/{userId}/profile/{imageId}
+    match /users/{userId}/profile/{imageId} {
+      // القراءة: مسموحة للجميع (الصور الشخصية عامة)
+      allow read: if true;
+      
+      // الكتابة: مسموحة للمالك فقط مع شروط الصورة
+      allow write: if isOwner(userId) && 
+                      isValidImageType() && 
+                      isValidImageSize();
+      
+      // الحذف: مسموح للمالك فقط
+      allow delete: if isOwner(userId);
+    }
+    
+    // ===== User Documents Rules =====
+    
+    // مستندات المستخدمين: documents/{userId}/{documentType}/{documentId}
+    match /documents/{userId}/{documentType}/{documentId} {
+      // القراءة: مسموحة للمالك والمشرفين فقط (المستندات خاصة)
+      allow read: if isOwner(userId) || isAdminOrModerator();
+      
+      // الكتابة: مسموحة للمالك فقط مع شروط المستند
+      allow write: if isOwner(userId) && 
+                      isValidDocumentType() && 
+                      isValidDocumentSize() &&
+                      documentType in ['id', 'business_license', 'address_proof', 'other'];
+      
+      // الحذف: مسموح للمالك والمشرفين
+      allow delete: if isOwner(userId) || isAdminOrModerator();
+    }
+    
+    // ===== Temporary Files Rules =====
+    
+    // الملفات المؤقتة: temp/{userId}/temp_uploads/{fileId}
+    match /temp/{userId}/temp_uploads/{fileId} {
+      // القراءة: مسموحة للمالك فقط
+      allow read: if isOwner(userId);
+      
+      // الكتابة: مسموحة للمالك فقط مع شروط أساسية
+      allow write: if isOwner(userId) && 
+                      (isValidImageType() || isValidDocumentType()) && 
+                      request.resource.size <= 10 * 1024 * 1024; // 10MB max
+      
+      // الحذف: مسموح للمالك فقط
+      allow delete: if isOwner(userId);
+    }
+    
+    // ===== Thumbnails Rules =====
+    
+    // الصور المصغرة: thumbnails/{userId}/{fileId}
+    match /thumbnails/{userId}/{fileId} {
+      // القراءة: مسموحة للجميع (للعرض السريع)
+      allow read: if true;
+      
+      // الكتابة: مسموحة للمالك فقط (تتم تلقائياً)
+      allow write: if isOwner(userId) && 
+                      isValidImageType() && 
+                      request.resource.size <= 1 * 1024 * 1024; // 1MB max للمصغرات
+      
+      // الحذف: مسموح للمالك والمشرفين
+      allow delete: if isOwner(userId) || isAdminOrModerator();
+    }
+    
+    // ===== Admin Functions Rules =====
+    
+    // جميع الملفات: للمشرفين فقط (للإدارة)
+    match /{allPaths=**} {
+      // قراءة شاملة للمشرفين
+      allow read: if isAdminOrModerator();
+      
+      // حذف شامل للإداريين فقط
+      allow delete: if request.auth != null && request.auth.token.role == 'admin';
+    }
+    
+    // ===== Legacy Support =====
+    
+    // دعم الهيكل القديم: listings/{uid}/{listingId}/{imageId}
+    match /listings/{uid}/{listingId}/{imageId} {
+      // إعادة توجيه إلى الهيكل الجديد
+      allow read: if true;
+      allow write: if isOwner(uid) && isValidImageType() && isValidImageSize();
+      allow delete: if isOwner(uid) || isAdminOrModerator();
+    }
+    
+    // ===== Fallback Rules =====
+    
+    // رفض جميع العمليات غير المحددة أعلاه
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+===== ملاحظات مهمة =====
+
+1. هيكل التخزين المحدث:
+   - listings/{userId}/{listingId}/images/ - صور الإعلانات
+   - users/{userId}/profile/ - صور الملفات الشخصية  
+   - documents/{userId}/{documentType}/ - مستندات المستخدمين
+   - temp/{userId}/temp_uploads/ - ملفات مؤقتة
+   - thumbnails/{userId}/ - صور مصغرة
+
+2. أنواع الملفات المدعومة:
+   - الصور: JPEG, JPG, PNG, WebP
+   - المستندات: PDF, DOC, DOCX + صور
+
+3. حدود الحجم:
+   - صور الإعلانات والملفات الشخصية: 5MB
+   - المستندات: 10MB
+   - الصور المصغرة: 1MB
+   - الملفات المؤقتة: 10MB
+
+4. أذونات الوصول:
+   - صور الإعلانات والملفات الشخصية: قراءة عامة، كتابة للمالك
+   - المستندات: وصول محدود للمالك والمشرفين
+   - الملفات المؤقتة: وصول المالك فقط
+
+5. أدوار المستخدمين:
+   - user: مستخدم عادي
+   - moderator: مشرف (قراءة شاملة، حذف محدود)
+   - admin: مدير (وصول كامل)
+
+===== تطبيق القواعد =====
+
+انسخ محتوى هذا الملف إلى Firebase Console:
+1. اذهب إلى Firebase Console
+2. Storage -> Rules
+3. انسخ والصق القواعد أعلاه
+4. اضغط "Publish"
+
+===== اختبار القواعد =====
+
+يمكن اختبار القواعد باستخدام Firebase Storage Emulator:
+firebase emulators:start --only storage
+
+*/
