@@ -44,8 +44,8 @@ export function Header() {
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72">
-            <SheetTitle className="px-4 pt-4 text-right">القائمة</SheetTitle>
+          <SheetContent side="left" className="w-72">
+            <SheetTitle className="px-4 pt-4 text-start">القائمة</SheetTitle>
             <form onSubmit={submit} className="relative mx-4 mt-4">
               <Search className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -57,7 +57,25 @@ export function Header() {
               />
             </form>
             <nav className="mt-4 flex flex-col gap-1 px-2">
-              {NAV.map((item) => (
+              {NAV.slice(0, 2).map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-4 py-3 text-sm font-medium hover:bg-accent"
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <Link
+                to="/create-listing"
+                onClick={() => setOpen(false)}
+                className="mx-2 mt-2 flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-md"
+              >
+                <PlusCircle className="size-5" />
+                أضف إعلانك
+              </Link>
+              {NAV.slice(2).map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useApp } from "@/hooks/useApp";
 import { CATEGORY_LABEL, CONDITION_LABEL, normalizeCondition, type ListingCondition } from "@/lib/data/catalog";
 import { getSeller, type Listing } from "@/lib/data/mock";
-import { formatDZD, formatNumber, timeAgo } from "@/lib/format";
+import { formatListingPrice, formatNumber, timeAgo } from "@/lib/format";
 import { callOrCopyPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
@@ -85,7 +85,7 @@ export function ListingCard({ listing, view = "grid" }: { listing: Listing; view
         >
           <ChevronLeft className="size-4" />
         </button>
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+        <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1">
           {images.map((_: string, i: number) => (
             <span key={i} className={cn("size-1.5 rounded-full bg-background/60", i === index && "bg-primary")} />
           ))}
@@ -107,7 +107,12 @@ export function ListingCard({ listing, view = "grid" }: { listing: Listing; view
           {listing.title}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-lg font-extrabold text-primary">{formatDZD(listing.price)}</span>
+          {formatListingPrice(listing.price) && (
+            <span className="text-lg font-extrabold text-primary">{formatListingPrice(listing.price)}</span>
+          )}
+          {listing.size && (
+            <Badge variant="secondary" className="font-semibold">{listing.size}</Badge>
+          )}
           <Badge variant="outline" className={conditionStyle[normalizeCondition(listing.condition)]}>
             {CONDITION_LABEL[listing.condition]}
           </Badge>

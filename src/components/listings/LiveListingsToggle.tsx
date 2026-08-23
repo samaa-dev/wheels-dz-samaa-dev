@@ -15,6 +15,11 @@ export function LiveListingsToggle({
   const dispatch = useAppDispatch();
   const live = useAppSelector((state) => state.ui.liveListings);
 
+  // Hide demo/live toggle in production builds
+  if (import.meta.env.PROD) {
+    return null;
+  }
+
   const onToggle = (checked: boolean) => {
     dispatch(setLiveListings(checked));
     if (checked) {

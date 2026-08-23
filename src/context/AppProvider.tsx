@@ -130,13 +130,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const saveListing = useCallback((listing: Listing) => {
-    setMyListings((prev) => {
-      const exists = prev.some((l) => l.id === listing.id);
-      const next = exists ? prev.map((l) => (l.id === listing.id ? listing : l)) : [listing, ...prev];
-      writeStore(STORAGE_KEYS.myListings, next);
-      return next;
-    });
+  const saveListing = useCallback((_listing: Listing) => {
+    throw new Error("saveListing لم يعد مدعوماً — استخدم createListing عبر Firebase");
   }, []);
 
   const removeListing = useCallback((id: string) => {

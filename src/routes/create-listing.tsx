@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Check, CircleAlert, ImagePlus, Trash2 } from "lucide-react";
+import { Check, CircleAlert, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/hooks/useApp";
-import { isProfileComplete, isSellerAccount } from "@/lib/auth/account";
+import { getPostAuthRedirect, isProfileComplete, isSellerAccount } from "@/lib/auth/account";
 import { hasPermission } from "@/lib/auth/permissions";
 import {
   BRAND_MODEL_EXAMPLES,
@@ -23,9 +23,8 @@ import {
   SIZE_HELP_TEXT,
   type ListingCondition,
 } from "@/lib/data/catalog";
-import { IMAGE_POOL, type Listing } from "@/lib/data/mock";
 import { getCommunes, WILAYAS } from "@/lib/data/wilayas";
-import { STORAGE_KEYS, delay, readStore, writeStore } from "@/lib/storage";
+import { STORAGE_KEYS, readStore, writeStore } from "@/lib/storage";
 
 export const Route = createFileRoute("/create-listing")({
   head: () => ({
@@ -53,7 +52,6 @@ interface Draft {
   model: string;
   year: string;
   condition: ListingCondition;
-  price: number;
   description: string;
   size: string;
   quantity: number;
@@ -69,7 +67,6 @@ const EMPTY: Draft = {
   model: "",
   year: "",
   condition: "used",
-  price: 0,
   description: "",
   size: "",
   quantity: 4,
@@ -80,11 +77,12 @@ const EMPTY: Draft = {
 };
 
 function CreateListingPage() {
-  const { saveListing, user, hydrated } = useApp();
+  const { createListing, loginWithGoogle, user, hydrated, loading } = useApp();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  type Errs = Partial<Record<"title" | "model" | "price" | "description" | "size" | "wilaya" | "commune" | "images", string>>;
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  type Errs = Partial<Record<"title" | "description" | "wilaya" | "images", string>>;
   const [errors, setErrors] = useState<Errs>({});
   const [terms, setTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -105,19 +103,18 @@ function CreateListingPage() {
     const e: Errs = {};
     if (step === 0) {
       if (draft.title.trim().length < 10) e.title = "العنوان يجب أن يحتوي 10 أحرف على الأقل";
-      if (!draft.model.trim()) e.model = "أدخل اسم الموديل";
     }
     if (step === 1) {
-      if (draft.price <= 0) e.price = "أدخل سعراً صحيحاً";
-      if (!draft.size.trim()) e.size = "أدخل المقاس";
-      if (draft.description.trim().split(/\s+/).filter(Boolean).length > 500) e.description = "الوصف يتجاوز 500 كلمة";
-      if (draft.description.trim().length < 20) e.description = "الوصف قصير جداً";
+      if (draft.description.trim().split(/\s+/).filter(Boolean).length > 500) {
+        e.description = "الوصف يتجاوز 500 كلمة";
+      }
     }
     if (step === 2) {
       if (!draft.wilaya) e.wilaya = "اختر الولاية";
-      if (!draft.commune) e.commune = "اختر البلدية";
     }
-    if (step === 3 && draft.images.length === 0) e.images = "أضف صورة واحدة على الأقل";
+    if (step === 3 && (draft.images.length === 0 || imageFiles.length === 0)) {
+      e.images = "أضف صورة واحدة على الأقل من جهازك";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -127,6 +124,7 @@ function CreateListingPage() {
   const addFiles = (files: FileList | null) => {
     if (!files) return;
     const accepted: string[] = [];
+    const newFiles: File[] = [];
     Array.from(files).forEach((f) => {
       if (!f.type.startsWith("image/")) {
         toast.error(`${f.name}: صيغة غير مدعومة`);
@@ -137,11 +135,16 @@ function CreateListingPage() {
         return;
       }
       accepted.push(URL.createObjectURL(f));
+      newFiles.push(f);
     });
+    setImageFiles((prev) => [...prev, ...newFiles].slice(0, 5));
     set("images", [...draft.images, ...accepted].slice(0, 5));
   };
 
-  const usePlaceholder = () => set("images", IMAGE_POOL.tire.slice(0, 3));
+  const removeImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, j) => j !== index));
+    set("images", draft.images.filter((_, j) => j !== index));
+  };
 
   const submit = async () => {
     if (!terms) {
@@ -149,59 +152,61 @@ function CreateListingPage() {
       return;
     }
     if (!user) return;
+    if (imageFiles.length === 0) {
+      toast.error("أضف صورة واحدة على الأقل من جهازك");
+      return;
+    }
     setSubmitting(true);
-    await delay(800);
-    const size = draft.size.trim() || SIZE_EXAMPLE;
-    const [wp = "205/55", dia = "16"] = size.split(" R");
-    const [width = "205", profile = "55"] = wp.split("/");
-    const imageUrls = draft.images.length ? draft.images : IMAGE_POOL.tire;
-    const yearNum = draft.year.trim() ? Number(draft.year) : undefined;
-    const listing: Listing = {
-      id: `MY${Date.now()}`,
-      ownerId: user.id,
-      ownerName: user.displayName || user.name || "مستخدم",
-      ownerPhone: user.phoneNumber || user.phone || "",
-      ownerEmail: user.email || "",
-      title: draft.title,
-      category: "tire",
-      brand: draft.brand || "غير محدد",
-      model: draft.model,
-      year: yearNum ?? 0,
-      condition: draft.condition,
-      price: draft.price,
-      description: draft.description,
-      size,
-      width,
-      profile,
-      diameter: dia,
-      wheelType: "tire",
-      isNegotiable: false,
-      quantity: draft.quantity,
-      wilaya: draft.wilaya,
-      commune: draft.commune,
-      createdAt: new Date().toISOString(),
-      views: 0,
-      contactClicks: 0,
-      favorites: 0,
-      shareCount: 0,
-      imageUrls,
-      coverImageUrl: imageUrls[0] || "",
-      images: imageUrls,
-      sellerId: user.id,
-      status: "active",
-      visibility: "public",
-      isPromoted: false,
-      featured: false,
-      tags: [],
-      features: [],
-      warranty: { hasWarranty: false },
-      keywords: [],
-    };
-    saveListing(listing);
-    writeStore(STORAGE_KEYS.draft, EMPTY);
-    setSubmitting(false);
-    toast.success("تم نشر إعلانك بنجاح");
-    navigate({ to: "/my-listings" });
+    try {
+      const size = draft.size.trim() || SIZE_EXAMPLE;
+      const [wp = "205/55", dia = "16"] = size.split(" R");
+      const [width = "205", profile = "55"] = wp.split("/");
+      const yearNum = draft.year.trim() ? Number(draft.year) : undefined;
+      const listingData = {
+        ownerId: user.id,
+        ownerName: user.displayName || user.name || "مستخدم",
+        ownerPhone: user.phoneNumber || user.phone || "",
+        ownerEmail: user.email || "",
+        title: draft.title,
+        category: "tire" as const,
+        brand: draft.brand || "غير محدد",
+        model: draft.model.trim() || "—",
+        year: yearNum ?? 0,
+        condition: draft.condition,
+        price: 0,
+        description: draft.description.trim(),
+        size,
+        width,
+        profile,
+        diameter: dia,
+        wheelType: "tire" as const,
+        isNegotiable: false,
+        quantity: draft.quantity || 1,
+        wilaya: draft.wilaya,
+        commune: draft.commune.trim() || "—",
+        imageUrls: [] as string[],
+        coverImageUrl: "",
+        images: [] as string[],
+        sellerId: user.id,
+        status: "active" as const,
+        visibility: "public" as const,
+        isPromoted: false,
+        featured: false,
+        tags: [] as string[],
+        features: [] as string[],
+        warranty: { hasWarranty: false },
+        keywords: [] as string[],
+      };
+      await createListing(listingData, imageFiles);
+      writeStore(STORAGE_KEYS.draft, EMPTY);
+      setImageFiles([]);
+      toast.success("تم نشر إعلانك بنجاح");
+      navigate({ to: "/my-listings" });
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : "تعذّر نشر الإعلان، حاول مرة أخرى");
+      } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!hydrated) {
@@ -209,19 +214,43 @@ function CreateListingPage() {
   }
 
   if (!user) {
+    const handleGoogle = async () => {
+      try {
+        const authUser = await loginWithGoogle();
+        toast.success("مرحباً بك!");
+        const target = getPostAuthRedirect(authUser, "/create-listing");
+        navigate({ to: target.to, search: target.search });
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : "حدث خطأ");
+      }
+    };
+
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <Card>
+        <Card className="border-primary/20 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-xl">سجّل الدخول لنشر إعلان</CardTitle>
-            <p className="text-sm text-muted-foreground">يجب إنشاء حساب أو تسجيل الدخول قبل إضافة إعلان.</p>
+            <CardTitle className="text-xl">انشر إعلانك مجاناً</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              سجّل الدخول بجوجل لنشر إعلانك — سريع وآمن.
+            </p>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <Button asChild className="h-12 font-bold">
-              <Link to="/register" search={{ redirect: "/create-listing" }}>إنشاء حساب</Link>
+            <Button className="h-12 gap-2 font-bold" disabled={loading} onClick={handleGoogle}>
+              {loading ? <Loader2 className="size-4 animate-spin" /> : (
+                <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                </svg>
+              )}
+              متابعة مع Google
             </Button>
             <Button asChild variant="outline" className="h-12">
-              <Link to="/login" search={{ redirect: "/create-listing" }}>تسجيل الدخول</Link>
+              <Link to="/register" search={{ redirect: "/create-listing" }}>إنشاء حساب</Link>
+            </Button>
+            <Button asChild variant="ghost" className="h-11">
+              <Link to="/login" search={{ redirect: "/create-listing" }}>لديك حساب؟ سجّل الدخول</Link>
             </Button>
           </CardContent>
         </Card>
@@ -302,7 +331,7 @@ function CreateListingPage() {
                   triggerClassName="h-12"
                 />
               </F>
-              <F label="الموديل" error={errors.model}>
+              <F label="الموديل (اختياري)">
                 <Input className="h-12" value={draft.model} onChange={(e) => set("model", e.target.value)} placeholder={modelPlaceholder} />
               </F>
               <F label="سنة الصنع (اختياري)">
@@ -323,9 +352,8 @@ function CreateListingPage() {
                   ))}
                 </RadioGroup>
               </F>
-              <F label="السعر (دج)" error={errors.price}><Input type="number" className="h-12" value={draft.price} onChange={(e) => set("price", Number(e.target.value))} /></F>
-              <F label="الكمية"><Input type="number" className="h-12" value={draft.quantity} onChange={(e) => set("quantity", Number(e.target.value))} /></F>
-              <F label="المقاس" error={errors.size}>
+              <F label="الكمية (اختياري)"><Input type="number" className="h-12" value={draft.quantity} onChange={(e) => set("quantity", Number(e.target.value))} /></F>
+              <F label="المقاس (اختياري)">
                 <div className="flex items-center gap-2">
                   <Input className="h-12 flex-1" value={draft.size} onChange={(e) => set("size", e.target.value)} placeholder={`مثال: ${SIZE_EXAMPLE}`} />
                   <Popover>
@@ -340,8 +368,8 @@ function CreateListingPage() {
                   </Popover>
                 </div>
               </F>
-              <F label="الوصف" error={errors.description}>
-                <Textarea rows={6} value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="اذكر حالة الإطار، سبب البيع، وإمكانية التوصيل..." />
+              <F label="الوصف (اختياري)" error={errors.description}>
+                <Textarea rows={6} value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="اذكر حالة الإطار، سبب البيع، وإمكانية التوصيل... (اختياري)" />
                 <p className="mt-1 text-xs text-muted-foreground">{draft.description.trim().split(/\s+/).filter(Boolean).length} / 500 كلمة</p>
               </F>
             </>
@@ -359,12 +387,12 @@ function CreateListingPage() {
                   triggerClassName="h-12"
                 />
               </F>
-              <F label="البلدية" error={errors.commune}>
+              <F label="البلدية (اختياري)">
                 <SearchableSelect
                   value={draft.commune}
                   onValueChange={(v) => set("commune", v)}
                   options={communeOptions}
-                  placeholder="اختر البلدية"
+                  placeholder="اختر البلدية (اختياري)"
                   searchPlaceholder="ابحث عن بلدية..."
                   disabled={!draft.wilaya}
                   triggerClassName="h-12"
@@ -385,7 +413,6 @@ function CreateListingPage() {
                 <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => addFiles(e.target.files)} />
                 <div className="flex gap-2">
                   <Button type="button" className="h-11" onClick={() => fileRef.current?.click()}>اختر الصور</Button>
-                  <Button type="button" variant="outline" className="h-11" onClick={usePlaceholder}>استخدم صوراً نموذجية</Button>
                 </div>
               </div>
               {errors.images && <p className="text-sm text-destructive">{errors.images}</p>}
@@ -395,7 +422,7 @@ function CreateListingPage() {
                     <img src={img} alt={`صورة ${i + 1}`} className="aspect-square w-full object-cover" />
                     <div className="absolute inset-x-0 bottom-0 flex justify-between bg-background/85 p-1">
                       <button type="button" className="text-xs font-semibold text-primary" onClick={() => set("cover", i)}>غلاف</button>
-                      <button type="button" onClick={() => set("images", draft.images.filter((_, j) => j !== i))} aria-label="حذف">
+                      <button type="button" onClick={() => removeImage(i)} aria-label="حذف">
                         <Trash2 className="size-4 text-destructive" />
                       </button>
                     </div>
@@ -411,12 +438,11 @@ function CreateListingPage() {
                 {[
                   ["العنوان", draft.title],
                   ["الشركة المصنعة", draft.brand || "—"],
-                  ["الموديل", draft.model],
+                  ["الموديل", draft.model || "—"],
                   ["السنة", draft.year || "—"],
                   ["الحالة", CONDITIONS.find((c) => c.value === draft.condition)?.label ?? ""],
-                  ["السعر", `${draft.price} دج`],
-                  ["المقاس", draft.size || SIZE_EXAMPLE],
-                  ["الموقع", `${draft.wilaya} - ${draft.commune}`],
+                  ["المقاس", draft.size || "—"],
+                  ["الموقع", `${draft.wilaya}${draft.commune ? ` - ${draft.commune}` : ""}`],
                   ["عدد الصور", String(draft.images.length)],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between rounded-md bg-muted/60 px-4 py-2">

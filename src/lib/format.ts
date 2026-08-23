@@ -2,6 +2,12 @@ export function formatDZD(value: number): string {
   return `${new Intl.NumberFormat("ar-DZ", { maximumFractionDigits: 0 }).format(value)} دج`;
 }
 
+/** Returns formatted price or null when price is not set (0 or negative). */
+export function formatListingPrice(value: number): string | null {
+  if (!value || value <= 0) return null;
+  return formatDZD(value);
+}
+
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat("ar-DZ").format(value);
 }

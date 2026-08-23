@@ -135,10 +135,25 @@ export function useApp() {
   }, [dispatch]);
 
   // Listings functions
+  const createListing = useMemo(() => {
+    return async (
+      listingData: Omit<Listing, 'id' | 'createdAt' | 'views' | 'contactClicks' | 'favorites' | 'shareCount' | 'publishedAt'>,
+      images: File[] = [],
+    ): Promise<Listing> => {
+      if (!images.length) {
+        throw new Error('أضف صورة واحدة على الأقل من جهازك');
+      }
+      const result = await dispatch(createListingThunk({ listingData, images }));
+      if (createListingThunk.fulfilled.match(result)) {
+        return result.payload;
+      }
+      throw new Error(result.error?.message || 'تعذّر نشر الإعلان');
+    };
+  }, [dispatch]);
+
   const saveListing = useMemo(() => {
-    return (listing: Listing) => {
-      // This is handled by createListingThunk now
-      console.warn('saveListing called - use createListingThunk instead');
+    return (_listing: Listing) => {
+      throw new Error('saveListing لم يعد مدعوماً — استخدم createListing');
     };
   }, []);
 
@@ -189,6 +204,7 @@ export function useApp() {
     registerView: registerViewFunc,
     myListings,
     saveListing,
+    createListing,
     removeListing,
     updateListingStatus,
     revealedContacts,

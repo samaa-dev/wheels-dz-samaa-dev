@@ -35,7 +35,6 @@ function HomePage() {
   const listings = useAllListings();
   const { recent, hydrated } = useApp();
   const [wilaya, setWilaya] = useState("all");
-  const [maxPrice, setMaxPrice] = useState(150000);
 
   useEffect(() => {
     if (hydrated) {
@@ -59,7 +58,6 @@ function HomePage() {
       to: "/listings",
       search: {
         wilaya: wilaya === "all" ? undefined : wilaya,
-        max: maxPrice,
       },
     });
 
@@ -67,9 +65,7 @@ function HomePage() {
     <div>
       <HeroSection
         wilaya={wilaya}
-        maxPrice={maxPrice}
         onWilayaChange={setWilaya}
-        onMaxPriceChange={setMaxPrice}
         onSearch={search}
       />
 

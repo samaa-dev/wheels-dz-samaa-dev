@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { onAuthStateChange, getCurrentUser } from '../lib/firebase/auth';
+import { onAuthStateChange, getCurrentUser, handleGoogleRedirectResult } from '../lib/firebase/auth';
 import { initializeFirebase, isFirebaseAvailable } from '../lib/firebase/config';
 import { useAppDispatch } from './hooks';
 import { hydrateUserThunk, clearUser, setHydrated } from './slices/authSlice';
@@ -31,6 +31,18 @@ export function AuthListener() {
           console.warn('Firebase not available, marking as hydrated');
           dispatch(setHydrated(true));
           return;
+        }
+
+        // Complete Google redirect sign-in if returning from redirect flow
+        try {
+          const redirectUser = await handleGoogleRedirectResult();
+          if (redirectUser) {
+            await dispatch(hydrateUserThunk(redirectUser.id));
+            dispatch(fetchFavoritesThunk(redirectUser.id));
+            dispatch(fetchRevealedContactsThunk(redirectUser.id));
+          }
+        } catch (error) {
+          console.error('Error handling Google redirect:', error);
         }
 
         // Check if user is already signed in

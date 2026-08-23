@@ -1,9 +1,7 @@
-import { CircleDollarSign, MapPin, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { MapPin, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Slider } from "@/components/ui/slider";
 import { WILAYAS } from "@/lib/data/wilayas";
-import { formatDZD } from "@/lib/format";
 import heroImg from "@/assets/hero-wheels.jpg";
 
 const WILAYA_OPTIONS = WILAYAS.map((w) => ({
@@ -14,19 +12,11 @@ const WILAYA_OPTIONS = WILAYAS.map((w) => ({
 
 type HeroSectionProps = {
   wilaya: string;
-  maxPrice: number;
   onWilayaChange: (value: string) => void;
-  onMaxPriceChange: (value: number) => void;
   onSearch: () => void;
 };
 
-export function HeroSection({
-  wilaya,
-  maxPrice,
-  onWilayaChange,
-  onMaxPriceChange,
-  onSearch,
-}: HeroSectionProps) {
+export function HeroSection({ wilaya, onWilayaChange, onSearch }: HeroSectionProps) {
   return (
     <section className="relative isolate overflow-hidden">
       <img
@@ -55,7 +45,7 @@ export function HeroSection({
             </span>
           </h1>
           <p className="mt-5 max-w-lg text-base leading-8 text-slate-200/90 sm:text-lg">
-            تصفّح عروض حقيقية، قارن الأسعار، وتواصل مع البائع مباشرة — بدون تعقيد وبدون وسطاء.
+            تصفّح عروض حقيقية وتواصل مع البائع مباشرة — بدون تعقيد وبدون وسطاء.
           </p>
           <ul className="mt-6 flex flex-wrap gap-2">
             {[
@@ -82,7 +72,7 @@ export function HeroSection({
           className="relative mt-10 overflow-hidden rounded-3xl border border-white/20 bg-white/92 p-3 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)] backdrop-blur-xl dark:bg-slate-950/85 sm:p-4"
         >
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-amber-300/70 to-transparent" />
-          <div className="grid items-stretch gap-3 lg:grid-cols-[1.2fr_1.15fr_auto]">
+          <div className="grid items-stretch gap-3 lg:grid-cols-[1fr_auto]">
             <label className="group flex min-w-0 flex-col justify-center rounded-2xl px-4 py-3 transition-colors hover:bg-slate-100/80 dark:hover:bg-white/5">
               <span className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground">
                 <MapPin className="size-3.5 text-primary" />
@@ -100,27 +90,6 @@ export function HeroSection({
                 />
               </div>
             </label>
-
-            <div className="flex min-w-0 flex-col justify-center rounded-2xl px-4 py-3 lg:border-s lg:border-slate-200/80 dark:lg:border-white/10">
-              <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <CircleDollarSign className="size-3.5 text-primary" />
-                  أقصى سعر
-                </span>
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-black text-primary">
-                  {formatDZD(maxPrice)}
-                </span>
-              </div>
-              <Slider
-                value={[maxPrice]}
-                min={5000}
-                max={300000}
-                step={5000}
-                onValueChange={(v) => onMaxPriceChange(v[0] ?? 0)}
-                className="mt-4"
-                aria-label="أقصى سعر"
-              />
-            </div>
 
             <Button
               type="submit"

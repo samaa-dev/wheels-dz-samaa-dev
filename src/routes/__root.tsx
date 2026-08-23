@@ -141,7 +141,7 @@ function RootComponent() {
           </main>
           <Footer />
         </div>
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-center" richColors dir="rtl" />
       </ReduxProvider>
     </QueryClientProvider>
   );

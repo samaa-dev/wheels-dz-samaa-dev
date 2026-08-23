@@ -42,6 +42,24 @@
   - `featured` (Ascending)
   - `createdAt` (Descending)
 
+#### 4. فهرس تقييمات البائع المعتمدة
+- **Collection**: `reviews`
+- **Fields**:
+  - `sellerId` (Ascending)
+  - `status` (Ascending)
+
+#### 5. فهرس التقييمات المعلّقة (لوحة الإدارة)
+- **Collection**: `reviews`
+- **Fields**:
+  - `status` (Ascending)
+  - `createdAt` (Descending)
+
+#### 6. فهرس تقييم المستخدم لنفس البائع
+- **Collection**: `reviews`
+- **Fields**:
+  - `sellerId` (Ascending)
+  - `reviewerId` (Ascending)
+
 ---
 
 ### ⚡ حل بديل مؤقت

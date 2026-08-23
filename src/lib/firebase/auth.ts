@@ -5,6 +5,8 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
   type User,
   type UserCredential,
@@ -219,7 +221,38 @@ export async function registerWithEmail(
 }
 
 /**
- * Sign in with Google
+ * Process Google sign-in credential and ensure Firestore profile exists.
+ */
+async function processGoogleUser(firebaseUser: User): Promise<AuthUser> {
+  let userProfile = await getUserProfile(firebaseUser.uid, false);
+
+  if (!userProfile) {
+    const displayName = firebaseUser.displayName || 'مستخدم جوجل';
+    const photoURL = firebaseUser.photoURL;
+    userProfile = defaultUserFields({
+      id: firebaseUser.uid,
+      email: firebaseUser.email || '',
+      displayName,
+      phoneNumber: firebaseUser.phoneNumber || '',
+      isEmailVerified: firebaseUser.emailVerified,
+      profileComplete: false,
+      lastLoginAt: new Date().toISOString(),
+      ...(photoURL ? { profileImageUrl: photoURL } : {}),
+    });
+
+    await createUserProfile(userProfile);
+  } else {
+    await updateUserProfile(userProfile.id, {
+      lastLoginAt: new Date().toISOString(),
+    });
+    userProfile.lastLoginAt = new Date().toISOString();
+  }
+
+  return userProfile;
+}
+
+/**
+ * Sign in with Google (popup, with redirect fallback when popup is blocked)
  */
 export async function signInWithGoogle(): Promise<AuthUser> {
   try {
@@ -227,38 +260,36 @@ export async function signInWithGoogle(): Promise<AuthUser> {
     const provider = new GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
-    
+
     const result = await signInWithPopup(auth, provider);
-    
-    // Check if user profile exists, create if not
-    let userProfile = await getUserProfile(result.user.uid, false);
-    
-    if (!userProfile) {
-      const displayName = result.user.displayName || 'مستخدم جوجل';
-      const photoURL = result.user.photoURL;
-      userProfile = defaultUserFields({
-        id: result.user.uid,
-        email: result.user.email || '',
-        displayName,
-        phoneNumber: result.user.phoneNumber || '',
-        isEmailVerified: result.user.emailVerified,
-        profileComplete: false,
-        lastLoginAt: new Date().toISOString(),
-        ...(photoURL ? { profileImageUrl: photoURL } : {}),
-      });
-      
-      await createUserProfile(userProfile);
-    } else {
-      // Update last login for existing users
-      await updateUserProfile(userProfile.id, { 
-        lastLoginAt: new Date().toISOString() 
-      });
-      userProfile.lastLoginAt = new Date().toISOString();
+    return processGoogleUser(result.user);
+  } catch (error: unknown) {
+    const firebaseError = error as { code?: string };
+    if (firebaseError.code === 'auth/popup-blocked') {
+      const auth = getFirebaseAuth();
+      const provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      await signInWithRedirect(auth, provider);
+      throw new Error('جارٍ إكمال تسجيل الدخول عبر Google...');
     }
-    
-    return userProfile;
-  } catch (error: any) {
-    throw new Error(mapAuthErrorToArabic(error));
+    throw new Error(mapAuthErrorToArabic(error as import('firebase/app').FirebaseError));
+  }
+}
+
+/**
+ * Handle Google redirect result after signInWithRedirect (call on app load).
+ */
+export async function handleGoogleRedirectResult(): Promise<AuthUser | null> {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const auth = getFirebaseAuth();
+    const result = await getRedirectResult(auth);
+    if (!result?.user) return null;
+    return processGoogleUser(result.user);
+  } catch (error: unknown) {
+    throw new Error(mapAuthErrorToArabic(error as import('firebase/app').FirebaseError));
   }
 }
 

@@ -150,10 +150,29 @@
     border-color: var(--color-border);
   }
 
+  html[dir="rtl"] {
+    direction: rtl;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    text-align: start;
+  }
+
+  html[dir="rtl"] input,
+  html[dir="rtl"] textarea,
+  html[dir="rtl"] select {
+    text-align: start;
+  }
+
+  /* Radix/shadcn menus & popovers inherit document direction */
+  html[dir="rtl"] [role="menu"],
+  html[dir="rtl"] [role="listbox"],
+  html[dir="rtl"] [data-radix-popper-content-wrapper] {
+    direction: rtl;
+    text-align: start;
   }
 }
 

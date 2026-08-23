@@ -69,6 +69,10 @@ export const createListingThunk = createAsyncThunk(
     listingData: Omit<Listing, 'id' | 'createdAt' | 'views' | 'contactClicks' | 'favorites' | 'shareCount' | 'publishedAt'>;
     images: File[];
   }) => {
+    if (!images.length) {
+      throw new Error('أضف صورة واحدة على الأقل من جهازك');
+    }
+
     const listingId = await createListing({
       ...listingData,
       imageUrls: [],
@@ -76,19 +80,21 @@ export const createListingThunk = createAsyncThunk(
       coverImageUrl: '',
     });
 
-    let imageUrls: string[] = [];
-    if (images.length > 0) {
-      const uploaded = await uploadListingImages(listingData.ownerId || listingData.sellerId, listingId, images);
-      imageUrls = uploaded.map((item) => item.url);
-      await updateListing(listingId, { imageUrls, images: imageUrls, coverImageUrl: imageUrls[0] || '' });
-    }
+    const uploaded = await uploadListingImages(
+      listingData.ownerId || listingData.sellerId,
+      listingId,
+      images,
+    );
+    const imageUrls = uploaded.map((item) => item.url);
+    const coverImageUrl = imageUrls[0] || '';
+    await updateListing(listingId, { imageUrls, images: imageUrls, coverImageUrl });
 
     const createdListing: Listing = {
       ...listingData,
       id: listingId,
       imageUrls,
       images: imageUrls,
-      coverImageUrl: imageUrls[0] || listingData.coverImageUrl || '',
+      coverImageUrl,
       createdAt: new Date().toISOString(),
       views: 0,
       contactClicks: 0,
@@ -102,9 +108,34 @@ export const createListingThunk = createAsyncThunk(
 
 export const updateListingThunk = createAsyncThunk(
   'listings/update',
-  async ({ listingId, updates }: { listingId: string; updates: Partial<Listing> }) => {
-    await updateListing(listingId, updates);
-    return { listingId, updates };
+  async ({
+    listingId,
+    updates,
+    images,
+    ownerId,
+  }: {
+    listingId: string;
+    updates: Partial<Listing>;
+    images?: File[];
+    ownerId?: string;
+  }) => {
+    let nextUpdates = { ...updates };
+
+    if (images && images.length > 0 && ownerId) {
+      const uploaded = await uploadListingImages(ownerId, listingId, images);
+      const imageUrls = uploaded.map((item) => item.url);
+      const existing = updates.imageUrls ?? [];
+      const merged = [...existing, ...imageUrls].slice(0, 5);
+      nextUpdates = {
+        ...nextUpdates,
+        imageUrls: merged,
+        images: merged,
+        coverImageUrl: merged[0] || updates.coverImageUrl || '',
+      };
+    }
+
+    await updateListing(listingId, nextUpdates);
+    return { listingId, updates: nextUpdates };
   }
 );
 
@@ -216,6 +247,18 @@ const listingsSlice = createSlice({
       .addCase(createListingThunk.rejected, (state, action) => {
         state.creating = false;
         state.createError = action.error.message || 'حدث خطأ أثناء إنشاء الإعلان';
+      });
+
+    // Update listing
+    builder
+      .addCase(updateListingThunk.fulfilled, (state, action) => {
+        const { listingId, updates } = action.payload;
+        const itemIndex = state.items.findIndex((item) => item.id === listingId);
+        const item = state.items[itemIndex];
+        if (item) Object.assign(item, updates);
+        const myItemIndex = state.myListings.findIndex((item) => item.id === listingId);
+        const myItem = state.myListings[myItemIndex];
+        if (myItem) Object.assign(myItem, updates);
       });
 
     // Update listing status

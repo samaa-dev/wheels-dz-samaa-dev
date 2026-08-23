@@ -28,11 +28,9 @@ const searchSchema = z.object({
   category: z.string().optional(),
   condition: z.string().optional(),
   brand: z.string().optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
   yearFrom: z.number().optional(),
   yearTo: z.number().optional(),
-  sort: z.enum(["newest", "oldest", "price-asc", "price-desc"]).optional(),
+  sort: z.enum(["newest", "oldest"]).optional(),
   page: z.number().optional(),
 });
 
@@ -41,9 +39,9 @@ export const Route = createFileRoute("/listings")({
   head: () => ({
     meta: [
       { title: "تصفح إعلانات الإطارات | عجلات الجزائر" },
-      { name: "description", content: "فلترة متقدمة حسب الولاية، الماركة، الحالة والسعر لآلاف إعلانات الإطارات." },
+      { name: "description", content: "فلترة متقدمة حسب الولاية، الماركة والحالة لآلاف إعلانات الإطارات." },
       { property: "og:title", content: "تصفح إعلانات الإطارات والجنوط | عجلات الجزائر" },
-      { property: "og:description", content: "فلترة متقدمة حسب الولاية، النوع، الماركة، الحالة والسعر." },
+      { property: "og:description", content: "فلترة متقدمة حسب الولاية، الماركة والحالة." },
     ],
   }),
   component: ListingsPage,
@@ -72,7 +70,6 @@ function ListingsPage() {
     wilaya: params.wilaya ?? "all",
     conditions: params.condition ? [params.condition as ListingCondition] : [],
     brand: params.brand ?? "all",
-    price: [params.min ?? 0, params.max ?? 300000],
     yearFrom: params.yearFrom ?? 2015,
     yearTo: params.yearTo ?? 2026,
   });
@@ -97,18 +94,13 @@ function ListingsPage() {
       if (filters.wilaya !== "all" && l.wilaya !== filters.wilaya) return false;
       if (filters.conditions.length && !filters.conditions.includes(normalizeCondition(l.condition))) return false;
       if (filters.brand !== "all" && l.brand !== filters.brand) return false;
-      if (l.price < filters.price[0] || l.price > filters.price[1]) return false;
-      if (l.year < filters.yearFrom || l.year > filters.yearTo) return false;
+      if (l.year && (l.year < filters.yearFrom || l.year > filters.yearTo)) return false;
       return true;
     });
     const sorted = [...filtered].sort((a, b) => {
       switch (sort) {
         case "oldest":
           return +new Date(a.createdAt) - +new Date(b.createdAt);
-        case "price-asc":
-          return a.price - b.price;
-        case "price-desc":
-          return b.price - a.price;
         default:
           return +new Date(b.createdAt) - +new Date(a.createdAt);
       }
@@ -164,8 +156,8 @@ function ListingsPage() {
                     <Filter className="size-4" /> الفلاتر
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[85vw] max-w-sm overflow-y-auto p-4">
-                  <SheetTitle className="mb-4 text-right">الفلاتر</SheetTitle>
+                <SheetContent side="left" className="w-[85vw] max-w-sm overflow-y-auto p-4">
+                  <SheetTitle className="mb-4 text-start">الفلاتر</SheetTitle>
                   {panel}
                 </SheetContent>
               </Sheet>
@@ -175,8 +167,6 @@ function ListingsPage() {
                 <SelectContent>
                   <SelectItem value="newest">الأحدث أولاً</SelectItem>
                   <SelectItem value="oldest">الأقدم أولاً</SelectItem>
-                  <SelectItem value="price-asc">السعر: من الأقل</SelectItem>
-                  <SelectItem value="price-desc">السعر: من الأعلى</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -199,7 +189,10 @@ function ListingsPage() {
             <div className="mt-10 rounded-lg border border-dashed border-border p-12 text-center">
               <SearchX className="mx-auto size-10 text-muted-foreground" />
               <h2 className="mt-4 text-lg font-bold">لا توجد نتائج مطابقة</h2>
-              <p className="mt-1 text-sm text-muted-foreground">جرّب توسيع نطاق السعر أو إزالة بعض الفلاتر.</p>
+              <p className="mt-1 text-sm text-muted-foreground">جرّب إزالة بعض الفلاتر أو توسيع البحث.</p>
+              <Button asChild className="mt-6 h-12 gap-2 font-bold">
+                <Link to="/create-listing"><PlusCircle className="size-5" /> أضف إعلانك</Link>
+              </Button>
             </div>
           ) : (
             <div className={cn("mt-6 grid gap-5", view === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>

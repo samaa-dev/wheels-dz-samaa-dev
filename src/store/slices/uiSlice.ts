@@ -12,11 +12,13 @@ interface UiState {
   error: string | null;
 }
 
+const defaultLiveListings = typeof import.meta !== "undefined" && Boolean(import.meta.env?.PROD);
+
 const initialState: UiState = {
   recent: [],
   views: {},
   revealedContacts: [],
-  liveListings: false,
+  liveListings: defaultLiveListings,
   loading: false,
   error: null,
 };
@@ -46,7 +48,12 @@ const uiSlice = createSlice({
       if (typeof window !== 'undefined') {
         state.recent = readStore(STORAGE_KEYS.recent, []);
         state.views = readStore(STORAGE_KEYS.views, {});
-        state.liveListings = readStore(STORAGE_KEYS.liveListings, false);
+        // In production always use live Firebase listings
+        if (import.meta.env.PROD) {
+          state.liveListings = true;
+        } else {
+          state.liveListings = readStore(STORAGE_KEYS.liveListings, false);
+        }
       }
     },
 

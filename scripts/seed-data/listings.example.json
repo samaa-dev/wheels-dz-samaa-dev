@@ -1,0 +1,42 @@
+[
+  {
+    "title": "أربع إطارات Michelin مقاس 205/55 R16 شبه جديدة",
+    "wilaya": "الجزائر",
+    "commune": "باب الزوار",
+    "brand": "Michelin",
+    "model": "Pilot Sport 4",
+    "year": 2023,
+    "condition": "like_new",
+    "size": "205/55 R16",
+    "quantity": 4,
+    "description": "إطارات بحالة ممتازة، استُعملت لمسافة قصيرة فقط.",
+    "ownerName": "بائع تجريبي",
+    "ownerPhone": "0555123456",
+    "images": [
+      "./images/sample-tire-1.jpg",
+      "./images/sample-tire-2.jpg"
+    ]
+  },
+  {
+    "title": "إطاران Bridgestone مستعملان مقاس 185/65 R15",
+    "wilaya": "وهران",
+    "brand": "Bridgestone",
+    "condition": "used",
+    "size": "185/65 R15",
+    "quantity": 2,
+    "description": "صالحان للاستعمال، بدون تشققات ظاهرة.",
+    "images": [
+      "./images/sample-tire-1.jpg"
+    ]
+  },
+  {
+    "title": "طقم إطارات جديد بدون ماركة محددة للبيع",
+    "wilaya": "قسنطينة",
+    "condition": "new",
+    "size": "195/65 R15",
+    "quantity": 4,
+    "images": [
+      "./images/sample-tire-2.jpg"
+    ]
+  }
+]

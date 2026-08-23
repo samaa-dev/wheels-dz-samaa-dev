@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useApp } from "@/hooks/useApp";
 import { STATUS_LABEL, type ListingStatus } from "@/lib/data/catalog";
-import { formatDZD, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/my-listings")({
   head: () => ({
@@ -33,7 +34,9 @@ function MyListingsPage() {
           <h1 className="truncate text-2xl font-black">إعلاناتي</h1>
           <p className="mt-1 text-sm text-muted-foreground">{myListings.length} إعلان</p>
         </div>
-        <Button asChild className="h-11 shrink-0"><Link to="/create-listing">إعلان جديد</Link></Button>
+        <Button asChild className="h-11 shrink-0 gap-2 font-bold">
+          <Link to="/create-listing"><PlusCircle className="size-4" /> إعلان جديد</Link>
+        </Button>
       </div>
 
       <div className="mt-6 flex items-center gap-3">
@@ -49,8 +52,11 @@ function MyListingsPage() {
       </div>
 
       {!hydrated ? null : items.length === 0 ? (
-        <div className="mt-10 rounded-lg border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
-          لا توجد إعلانات بهذه الحالة.
+        <div className="mt-10 rounded-lg border border-dashed border-border p-12 text-center">
+          <p className="text-sm text-muted-foreground">لا توجد إعلانات بهذه الحالة.</p>
+          <Button asChild className="mt-6 h-12 gap-2 font-bold">
+            <Link to="/create-listing"><PlusCircle className="size-5" /> أضف إعلانك الأول</Link>
+          </Button>
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
@@ -62,11 +68,13 @@ function MyListingsPage() {
                   <Link to="/listing/$id" params={{ id: l.id }} className="truncate font-bold hover:text-primary">{l.title}</Link>
                   <Badge variant="secondary">{STATUS_LABEL[l.status]}</Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{formatDZD(l.price)} · {l.wilaya} · {timeAgo(l.createdAt)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{l.wilaya}{l.commune ? ` · ${l.commune}` : ""} · {timeAgo(l.createdAt)}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" className="h-11" onClick={() => toast.info("تحرير الإعلان متاح من نموذج الإضافة.")}>تعديل</Button>
-                <Button variant="outline" className="h-11" onClick={() => { updateListingStatus(l.id, "pending"); toast.success("تم إرسال طلب الترقية"); }}>ترقية</Button>
+                <Button asChild variant="outline" className="h-11">
+                  <Link to="/edit-listing/$id" params={{ id: l.id }}>تعديل</Link>
+                </Button>
+                <Button variant="outline" className="h-11" onClick={() => { updateListingStatus(l.id, "pending"); toast.success("تم تحديث حالة الإعلان"); }}>ترقية</Button>
                 <Button variant="outline" className="h-11" onClick={() => { updateListingStatus(l.id, l.status === "active" ? "inactive" : "active"); toast.success("تم تحديث حالة الإعلان"); }}>
                   {l.status === "active" ? "إيقاف" : "تفعيل"}
                 </Button>

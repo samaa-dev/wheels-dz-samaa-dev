@@ -2,7 +2,7 @@ import { useIsDemoListings } from "@/hooks/useApp";
 
 export function DemoListingsBanner() {
   const isDemo = useIsDemoListings();
-  if (!isDemo) return null;
+  if (import.meta.env.PROD || !isDemo) return null;
 
   return (
     <div

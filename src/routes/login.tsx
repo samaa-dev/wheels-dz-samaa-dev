@@ -29,16 +29,17 @@ function LoginPage() {
     try {
       const authUser = await loginWithGoogle();
       toast.success("مرحباً بك!");
-      navigate({ to: getPostAuthRedirect(authUser, redirect) });
+      const target = getPostAuthRedirect(authUser, redirect);
+      navigate({ to: target.to, search: target.search });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "حدث خطأ");
     }
   };
 
   useEffect(() => {
-    if (hydrated && user?.profileComplete) {
-      navigate({ to: redirect || "/profile" });
-    }
+    if (!hydrated || !user) return;
+    const target = getPostAuthRedirect(user, redirect);
+    navigate({ to: target.to, search: target.search });
   }, [hydrated, user, redirect, navigate]);
 
   return (

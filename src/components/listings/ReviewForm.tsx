@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { InteractiveStarRating } from "@/components/listings/InteractiveStarRating";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,25 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    if (!user || user.id === sellerId) {
+      setChecking(false);
+      return;
+    }
+    hasUserReviewedSeller(sellerId, user.id).then((exists) => {
+      if (active) {
+        setAlreadyReviewed(exists);
+        setChecking(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [sellerId, user]);
 
   if (!user) {
     return (
@@ -30,7 +49,11 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
     return null;
   }
 
-  if (hasUserReviewedSeller(sellerId, user.id)) {
+  if (checking) {
+    return <p className="text-sm text-muted-foreground">جارٍ التحقق...</p>;
+  }
+
+  if (alreadyReviewed) {
     return (
       <p className="text-sm text-muted-foreground">
         لقد أرسلت تقييماً لهذا البائع. سيظهر بعد موافقة الإدارة.
@@ -43,8 +66,8 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
       toast.error("اختر عدد النجوم");
       return;
     }
-    if (comment.trim().length < 5) {
-      toast.error("اكتب ملاحظة تقييمية (5 أحرف على الأقل)");
+    if (comment.trim().length > 500) {
+      toast.error("الملاحظة طويلة جداً (500 حرف كحد أقصى)");
       return;
     }
     setSubmitting(true);
@@ -52,14 +75,15 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
       await submitReview({
         sellerId,
         reviewerId: user.id,
-        reviewerName: user.displayName || user.name,
+        reviewerName: user.displayName || user.name || "مستخدم",
         rating,
         comment,
       });
+      setAlreadyReviewed(true);
       toast.success("تم إرسال تقييمك. سيظهر بعد موافقة الإدارة.");
       onSubmitted?.();
-    } catch {
-      toast.error("تعذّر إرسال التقييم");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "تعذّر إرسال التقييم");
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +97,7 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
         rows={3}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="اكتب ملاحظتك عن تجربتك مع البائع..."
+        placeholder="اكتب ملاحظتك عن تجربتك مع البائع... (اختياري)"
       />
       <Button className="h-11 w-full" disabled={submitting} onClick={handleSubmit}>
         {submitting && <Loader2 className="size-4 animate-spin" />}

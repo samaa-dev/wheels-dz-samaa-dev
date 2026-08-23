@@ -99,10 +99,10 @@ export const LISTING_VALIDATION = {
   },
   
   description: {
-    required: true,
-    minLength: 20,
+    required: false,
+    minLength: 0,
     maxLength: 2000,
-    errorMessage: 'وصف الإعلان يجب أن يكون بين 20-2000 حرف'
+    errorMessage: 'وصف الإعلان يجب ألا يتجاوز 2000 حرف'
   },
   
   category: {
@@ -120,10 +120,10 @@ export const LISTING_VALIDATION = {
   },
   
   model: {
-    required: true,
-    minLength: 1,
+    required: false,
+    minLength: 0,
     maxLength: 50,
-    errorMessage: 'اسم الموديل يجب أن يكون بين 1-50 حرف'
+    errorMessage: 'اسم الموديل يجب ألا يتجاوز 50 حرف'
   },
   
   year: {
@@ -141,7 +141,7 @@ export const LISTING_VALIDATION = {
   
   // المواصفات التقنية
   size: {
-    required: true,
+    required: false,
     pattern: /^\d{3}\/\d{2}\s+R\d{2}$/, // مثال: 205/55 R16
     errorMessage: 'مقاس الإطار يجب أن يكون بالشكل: 205/55 R16'
   },
@@ -166,10 +166,10 @@ export const LISTING_VALIDATION = {
   
   // السعر والكمية
   price: {
-    required: true,
-    min: 100,
-    max: 2000000, // 2 مليون دينار
-    errorMessage: 'السعر يجب أن يكون بين 100 و 2,000,000 دينار'
+    required: false,
+    min: 0,
+    max: 2000000,
+    errorMessage: 'السعر يجب أن يكون بين 0 و 2,000,000 دينار'
   },
   
   quantity: {
@@ -359,12 +359,11 @@ export function validateListing(listing: Partial<Listing>): { isValid: boolean; 
     errors.push(LISTING_VALIDATION.diameter.errorMessage);
   }
   
-  // التحقق من السعر والكمية
-  if (!listing.price) {
-    errors.push(LISTING_VALIDATION.price.errorMessage);
-  } else if (
-    listing.price < LISTING_VALIDATION.price.min ||
-    listing.price > LISTING_VALIDATION.price.max
+  // التحقق من السعر والكمية (السعر اختياري — 0 مسموح)
+  if (
+    typeof listing.price === 'number' &&
+    (listing.price < LISTING_VALIDATION.price.min ||
+      listing.price > LISTING_VALIDATION.price.max)
   ) {
     errors.push(LISTING_VALIDATION.price.errorMessage);
   }

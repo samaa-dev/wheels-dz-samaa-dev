@@ -36,13 +36,23 @@ service cloud.firestore {
       return status == 'active';
     }
     
-    // Validate listing data
+    // Validate listing data (price may be 0 — UI no longer requires a price)
     function isValidListingData(data) {
       return data.keys().hasAll(['title', 'category', 'brand', 'price', 'ownerId']) &&
              data.title is string && data.title.size() >= 10 && data.title.size() <= 100 &&
              data.category in ['tire', 'rim', 'complete_set', 'accessories'] &&
-             data.price is number && data.price >= 100 && data.price <= 2000000 &&
+             data.brand is string &&
+             data.price is number && data.price >= 0 && data.price <= 2000000 &&
              data.ownerId is string;
+    }
+
+    // Role from Firestore user doc (app stores role there, not only custom claims)
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isModeratorOrAdminDoc() {
+      return isAuthenticated() && userRole() in ['admin', 'moderator'];
     }
     
     // Validate user data
@@ -143,6 +153,34 @@ service cloud.firestore {
       
       // Delete: Admins only
       allow delete: if isAdmin();
+    }
+    
+    // ===== Reviews Collection =====
+
+    match /reviews/{reviewId} {
+      // Public can read approved reviews; authors and mods can read any of theirs/pending
+      allow read: if resource.data.status == 'approved' ||
+                     isOwner(resource.data.reviewerId) ||
+                     isAdminOrModerator() ||
+                     isModeratorOrAdminDoc();
+
+      // Authenticated users can submit a review for another seller
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.reviewerId) &&
+                       request.resource.data.sellerId is string &&
+                       request.resource.data.sellerId != request.auth.uid &&
+                       request.resource.data.rating is number &&
+                       request.resource.data.rating >= 1 &&
+                       request.resource.data.rating <= 5 &&
+                       request.resource.data.status == 'pending' &&
+                       request.resource.data.comment is string &&
+                       request.resource.data.comment.size() <= 500;
+
+      // Only moderators/admins can change status (approve/reject)
+      allow update: if (isAdminOrModerator() || isModeratorOrAdminDoc()) &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+      allow delete: if isAdmin() || isModeratorOrAdminDoc();
     }
     
     // ===== Favorites Collection =====

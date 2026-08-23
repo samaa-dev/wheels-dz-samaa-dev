@@ -37,7 +37,8 @@ function RegisterPage() {
     try {
       const authUser = await loginWithGoogle();
       toast.success("مرحباً بك!");
-      navigate({ to: getPostAuthRedirect(authUser, redirect) });
+      const target = getPostAuthRedirect(authUser, redirect);
+      navigate({ to: target.to, search: target.search });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "حدث خطأ");
     }

@@ -6,17 +6,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Slider } from "@/components/ui/slider";
 import { BRANDS, CONDITIONS, type ListingCondition } from "@/lib/data/catalog";
 import { WILAYAS } from "@/lib/data/wilayas";
-import { formatDZD } from "@/lib/format";
 
 export interface Filters {
   q: string;
   wilaya: string;
   conditions: ListingCondition[];
   brand: string;
-  price: [number, number];
   yearFrom: number;
   yearTo: number;
 }
@@ -26,7 +23,6 @@ export const DEFAULT_FILTERS: Filters = {
   wilaya: "all",
   conditions: [],
   brand: "all",
-  price: [0, 300000],
   yearFrom: 2015,
   yearTo: 2026,
 };
@@ -74,7 +70,7 @@ export function FiltersPanel({ value, onChange }: { value: Filters; onChange: (n
         />
       </div>
 
-      <Accordion type="multiple" defaultValue={mounted ? ["brand", "condition", "price"] : []}>
+      <Accordion type="multiple" defaultValue={mounted ? ["brand", "condition"] : []}>
         <AccordionItem value="brand">
           <AccordionTrigger>الشركة المصنعة</AccordionTrigger>
           <AccordionContent>
@@ -102,23 +98,6 @@ export function FiltersPanel({ value, onChange }: { value: Filters; onChange: (n
                 {c.label}
               </label>
             ))}
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="price">
-          <AccordionTrigger>السعر</AccordionTrigger>
-          <AccordionContent className="space-y-4 pt-2">
-            <Slider
-              value={value.price}
-              min={0}
-              max={300000}
-              step={5000}
-              onValueChange={(v) => set("price", [v[0] ?? 0, v[1] ?? 300000])}
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{formatDZD(value.price[0])}</span>
-              <span>{formatDZD(value.price[1])}</span>
-            </div>
           </AccordionContent>
         </AccordionItem>
 

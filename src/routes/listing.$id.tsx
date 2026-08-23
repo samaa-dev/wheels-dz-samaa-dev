@@ -19,7 +19,7 @@ import { useAllListings, useApp } from "@/hooks/useApp";
 import { CATEGORY_LABEL, CONDITION_LABEL, normalizeCondition } from "@/lib/data/catalog";
 import { getSeller } from "@/lib/data/mock";
 import { getSellerRatingSummary } from "@/lib/firebase/reviews";
-import { formatDZD, formatDate, formatNumber, timeAgo } from "@/lib/format";
+import { formatDate, formatListingPrice, formatNumber, timeAgo } from "@/lib/format";
 import { callOrCopyPhone, toTelNumber } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
@@ -107,9 +107,9 @@ function ListingDetail() {
       <Breadcrumb className="no-print mb-6">
         <BreadcrumbList>
           <BreadcrumbItem><BreadcrumbLink asChild><Link to="/">الرئيسية</Link></BreadcrumbLink></BreadcrumbItem>
-          <BreadcrumbSeparator className="rotate-180" />
+          <BreadcrumbSeparator />
           <BreadcrumbItem><BreadcrumbLink asChild><Link to="/listings">الإعلانات</Link></BreadcrumbLink></BreadcrumbItem>
-          <BreadcrumbSeparator className="rotate-180" />
+          <BreadcrumbSeparator />
           <BreadcrumbItem><BreadcrumbPage className="max-w-60 truncate">{listing.title}</BreadcrumbPage></BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -133,7 +133,9 @@ function ListingDetail() {
             <CardHeader>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
                 <CardTitle className="min-w-0 text-xl leading-8">{listing.title}</CardTitle>
-                <span className="shrink-0 text-2xl font-black text-primary">{formatDZD(listing.price)}</span>
+                {formatListingPrice(listing.price) && (
+                  <span className="shrink-0 text-2xl font-black text-primary">{formatListingPrice(listing.price)}</span>
+                )}
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Badge variant="secondary">{CATEGORY_LABEL[listing.category]}</Badge>
@@ -244,7 +246,7 @@ function ListingDetail() {
 
       <Dialog open={lightbox} onOpenChange={setLightbox}>
         <DialogContent className="max-w-3xl">
-          <DialogHeader><DialogTitle className="text-right">{listing.title}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-start">{listing.title}</DialogTitle></DialogHeader>
           <img src={images[active]} alt={listing.title} width={800} height={600} className="w-full rounded-md object-contain" />
         </DialogContent>
       </Dialog>
