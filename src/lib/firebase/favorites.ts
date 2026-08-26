@@ -208,7 +208,11 @@ export async function getUserFavorites(userId: string): Promise<Favorite[]> {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(docToFavorite);
   } catch (error: any) {
+    // Soft-fail: missing index or first login without profile should not break auth
     console.error('Error fetching user favorites:', error);
+    if (error?.code === 'permission-denied' || error?.code === 'failed-precondition') {
+      return [];
+    }
     throw new Error(mapFirebaseErrorToArabic(error));
   }
 }

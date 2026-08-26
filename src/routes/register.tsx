@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,6 +47,11 @@ function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-14">
+      <div className="mb-8 flex justify-center">
+        <Link to="/" aria-label="عجلات الجزائر — الرئيسية">
+          <BrandLogo size="xl" stacked />
+        </Link>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">إنشاء حساب جديد</CardTitle>

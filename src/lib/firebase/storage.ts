@@ -72,6 +72,22 @@ function createSafeFilename(originalName: string, prefix?: string): string {
     : `${timestamp}_${randomId}_${baseName}.${extension}`;
 }
 
+function guessImageContentType(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    case 'jpg':
+    case 'jpeg':
+    default:
+      return 'image/jpeg';
+  }
+}
+
 // ===== Listing Images Functions =====
 
 /**
@@ -93,7 +109,7 @@ export async function uploadListingImages(
       
       // رفع الملف مع metadata محسّن
       const snapshot = await uploadBytes(storageRef, file, {
-        contentType: file.type,
+        contentType: file.type || guessImageContentType(file.name),
         customMetadata: {
           uploadedBy: uid,
           listingId: listingId,

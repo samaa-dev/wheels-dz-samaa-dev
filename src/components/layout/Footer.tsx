@@ -1,17 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { Facebook, Instagram, Mail, MapPin, Phone, Send } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export function Footer() {
   return (
     <footer className="no-print mt-16 border-t border-border bg-secondary">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="grid size-9 place-items-center rounded-lg bg-primary text-sm font-black text-primary-foreground">
-              دج
-            </span>
-            <span className="text-lg font-extrabold">عجلات الجزائر</span>
-          </div>
+          <Link to="/" className="inline-flex" aria-label="عجلات الجزائر — الرئيسية">
+            <BrandLogo size="lg" withName />
+          </Link>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             أول سوق جزائري متخصص في بيع وشراء الإطارات المستعملة والجديدة عبر كل الولايات.
           </p>

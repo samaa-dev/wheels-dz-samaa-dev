@@ -72,9 +72,9 @@ function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-8">
         <DemoListingsBanner />
         <SectionHead title="إعلانات مميزة" subtitle="أفضل العروض المختارة لك" action />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
           {featured.map((l) => (
-            <ListingCard key={l.id} listing={l} />
+            <ListingCard key={l.id} listing={l} compact />
           ))}
         </div>
       </section>
@@ -82,9 +82,9 @@ function HomePage() {
       <section className="bg-secondary py-8">
         <div className="mx-auto max-w-7xl px-4">
           <SectionHead title="أحدث الإعلانات" subtitle="مضافة حديثاً من كل الولايات" action />
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
             {newest.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+              <ListingCard key={l.id} listing={l} compact />
             ))}
           </div>
         </div>
@@ -93,27 +93,30 @@ function HomePage() {
       {recentlyViewed.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-8">
           <SectionHead title="شاهدتها مؤخراً" subtitle="إعلانات زرتها في وقت سابق" />
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {recentlyViewed.map((l) => l && <ListingCard key={l.id} listing={l} />)}
+          <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+            {recentlyViewed.map((l) => l && <ListingCard key={l.id} listing={l} compact />)}
           </div>
         </section>
       )}
 
       <section className="border-t border-border bg-card">
-        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3 px-4 py-6 lg:grid-cols-4 lg:gap-4">
           {[
             { icon: LayoutGrid, label: "إعلان منشور", value: PLATFORM_STATS.listings },
             { icon: Users, label: "مستخدم نشط", value: PLATFORM_STATS.users },
             { icon: Handshake, label: "صفقة ناجحة", value: PLATFORM_STATS.deals },
             { icon: CircleDollarSign, label: "ولاية مغطاة", value: PLATFORM_STATS.wilayas },
           ].map((s) => (
-            <div key={s.label} className="flex items-center gap-3">
+            <div
+              key={s.label}
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-4 text-center sm:flex-row sm:justify-start sm:gap-3 sm:text-start lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
+            >
               <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                 <s.icon className="size-5" />
               </span>
               <div className="min-w-0">
-                <div className="text-lg font-black">{formatNumber(s.value)}</div>
-                <div className="text-xs text-muted-foreground">{s.label}</div>
+                <div className="text-lg font-black leading-none">{formatNumber(s.value)}</div>
+                <div className="mt-1 text-[11px] text-muted-foreground sm:text-xs">{s.label}</div>
               </div>
             </div>
           ))}

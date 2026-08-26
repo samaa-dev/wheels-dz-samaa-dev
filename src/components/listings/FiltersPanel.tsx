@@ -6,12 +6,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { BRANDS, CONDITIONS, type ListingCondition } from "@/lib/data/catalog";
+import { BRANDS, CONDITIONS, SIZES, type ListingCondition } from "@/lib/data/catalog";
 import { WILAYAS } from "@/lib/data/wilayas";
 
 export interface Filters {
   q: string;
   wilaya: string;
+  size: string;
   conditions: ListingCondition[];
   brand: string;
   yearFrom: number;
@@ -21,6 +22,7 @@ export interface Filters {
 export const DEFAULT_FILTERS: Filters = {
   q: "",
   wilaya: "all",
+  size: "all",
   conditions: [],
   brand: "all",
   yearFrom: 2015,
@@ -34,6 +36,7 @@ const WILAYA_OPTIONS = WILAYAS.map((w) => ({
 }));
 
 const BRAND_OPTIONS = BRANDS.map((b) => ({ value: b, label: b }));
+const SIZE_OPTIONS = SIZES.map((s) => ({ value: s, label: s, keywords: s.replace(/\s/g, "") }));
 
 export function FiltersPanel({ value, onChange }: { value: Filters; onChange: (next: Filters) => void }) {
   const [mounted, setMounted] = useState(false);
@@ -70,7 +73,22 @@ export function FiltersPanel({ value, onChange }: { value: Filters; onChange: (n
         />
       </div>
 
-      <Accordion type="multiple" defaultValue={mounted ? ["brand", "condition"] : []}>
+      <Accordion type="multiple" defaultValue={mounted ? ["size", "brand", "condition"] : []}>
+        <AccordionItem value="size">
+          <AccordionTrigger>المقاس</AccordionTrigger>
+          <AccordionContent>
+            <SearchableSelect
+              value={value.size}
+              onValueChange={(v) => set("size", v)}
+              options={SIZE_OPTIONS}
+              placeholder="اختر المقاس"
+              searchPlaceholder="ابحث عن مقاس..."
+              allOption={{ value: "all", label: "كل المقاسات" }}
+              triggerClassName="h-11"
+            />
+          </AccordionContent>
+        </AccordionItem>
+
         <AccordionItem value="brand">
           <AccordionTrigger>الشركة المصنعة</AccordionTrigger>
           <AccordionContent>

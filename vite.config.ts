@@ -15,6 +15,17 @@ export default defineConfig({
       "@": path.resolve(rootDir, "./src"),
     },
   },
+  // Allow Firebase Google popup to talk to window.closed (avoids COOP blocking)
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+  },
+  preview: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+  },
   plugins: [
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tailwindcss(),

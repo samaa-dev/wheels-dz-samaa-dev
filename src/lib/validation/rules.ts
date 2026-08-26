@@ -93,9 +93,9 @@ export const LISTING_VALIDATION = {
   // معلومات أساسية
   title: {
     required: true,
-    minLength: 10,
+    minLength: 5,
     maxLength: 100,
-    errorMessage: 'عنوان الإعلان يجب أن يكون بين 10-100 حرف'
+    errorMessage: 'عنوان الإعلان يجب أن يكون بين 5-100 حرف'
   },
   
   description: {

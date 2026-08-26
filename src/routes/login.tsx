@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useApp } from "@/hooks/useApp";
@@ -44,6 +45,11 @@ function LoginPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col px-4 py-14">
+      <div className="mb-8 flex justify-center">
+        <Link to="/" aria-label="عجلات الجزائر — الرئيسية">
+          <BrandLogo size="xl" stacked nameClassName="text-foreground" />
+        </Link>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">تسجيل الدخول</CardTitle>

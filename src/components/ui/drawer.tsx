@@ -29,21 +29,45 @@ const DrawerOverlay = React.forwardRef<
 ));
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
+type DrawerContentProps = React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & {
+  /** Visual edge the drawer slides from */
+  side?: "bottom" | "right" | "left" | "top";
+};
+
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  DrawerContentProps
+>(({ className, children, side = "bottom", ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        "fixed z-50 flex flex-col bg-background outline-none",
+        side === "bottom" &&
+          "inset-x-0 bottom-0 mt-24 h-auto rounded-t-[10px] border",
+        side === "top" && "inset-x-0 top-0 mb-24 h-auto rounded-b-[10px] border",
+        side === "right" &&
+          "inset-y-0 right-0 h-full w-[min(100%,20rem)] border-l",
+        side === "left" &&
+          "inset-y-0 left-0 h-full w-[min(100%,20rem)] border-r",
         className,
       )}
       {...props}
     >
-      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+      {side === "bottom" || side === "top" ? (
+        <div className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
+      ) : side === "right" ? (
+        <div
+          aria-hidden
+          className="absolute start-2 top-1/2 h-16 w-1.5 -translate-y-1/2 rounded-full bg-muted"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="absolute end-2 top-1/2 h-16 w-1.5 -translate-y-1/2 rounded-full bg-muted"
+        />
+      )}
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>

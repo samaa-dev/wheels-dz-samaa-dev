@@ -13,9 +13,10 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
-import { mapAuthErrorToArabic } from './mapAuthError';
+import { mapAuthErrorToArabic, mapFirebaseErrorToArabic } from './mapAuthError';
 import type { AccountType } from '../auth/account';
 import { fields, toIso } from './docData';
+import { formatAlgerianPhone } from '../validation/rules';
 
 const DEFAULT_PREFERENCES: AuthUser['preferences'] = {
   language: 'ar',
@@ -53,6 +54,15 @@ function withAliases(user: Omit<AuthUser, 'name' | 'phone'> & Partial<Pick<AuthU
   };
 }
 
+/** Remove undefined values — Firestore setDoc/updateDoc reject them. */
+function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out as Partial<T>;
+}
+
 function defaultUserFields(overrides: Partial<AuthUser> & Pick<AuthUser, 'id' | 'email' | 'displayName'>): AuthUser {
   const displayName = overrides.displayName;
   const phoneNumber = overrides.phoneNumber || overrides.phone || '';
@@ -78,13 +88,14 @@ function defaultUserFields(overrides: Partial<AuthUser> & Pick<AuthUser, 'id' | 
     reviewsCount: overrides.reviewsCount ?? 0,
     accountStatus: overrides.accountStatus || 'active',
     role: overrides.role || 'user',
-    accountType: overrides.accountType,
     profileComplete: overrides.profileComplete ?? false,
     isSubscribedToNewsletter: overrides.isSubscribedToNewsletter ?? false,
     memberSince: overrides.memberSince || new Date().toISOString(),
     socialLinks: overrides.socialLinks || {},
     preferences: overrides.preferences || DEFAULT_PREFERENCES,
   };
+  // accountType is set only after complete-profile — never write undefined to Firestore
+  if (overrides.accountType) base.accountType = overrides.accountType;
   if (overrides.profileImageUrl) base.profileImageUrl = overrides.profileImageUrl;
   if (overrides.lastLoginAt) base.lastLoginAt = overrides.lastLoginAt;
   if (overrides.dateOfBirth) base.dateOfBirth = overrides.dateOfBirth;
@@ -131,7 +142,7 @@ export interface AuthUser {
   reviewsCount: number; // عدد التقييمات
   
   // الحالة والصلاحيات
-  accountStatus: 'active' | 'suspended' | 'pending'; // حالة الحساب
+  accountStatus: 'active' | 'suspended' | 'pending' | 'deleted'; // حالة الحساب
   role: 'user' | 'admin' | 'moderator'; // الدور
   accountType?: AccountType; // نوع الحساب: مشتري / بائع عادي / تاجر
   profileComplete?: boolean; // هل أكمل الملف بعد التسجيل
@@ -166,6 +177,24 @@ export interface AuthUser {
   };
 }
 
+function assertAccountAllowed(user: AuthUser): void {
+  if (user.accountStatus === 'suspended') {
+    throw new Error('تم تعليق حسابك. تواصل مع الإدارة إن كان ذلك خطأً.');
+  }
+  if (user.accountStatus === 'deleted') {
+    throw new Error('تم إيقاف هذا الحساب. لا يمكن تسجيل الدخول به.');
+  }
+}
+
+async function signOutQuietly(): Promise<void> {
+  try {
+    const auth = getFirebaseAuth();
+    await signOut(auth);
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Sign in with email and password
  */
@@ -174,10 +203,25 @@ export async function signInWithEmail(email: string, password: string): Promise<
     const auth = getFirebaseAuth();
     const result = await signInWithEmailAndPassword(auth, email, password);
     
-    // Get user profile from Firestore
-    const userProfile = await getUserProfile(result.user.uid);
+    // Recreate Firestore profile if Auth exists but profile was hard-deleted (legacy)
+    let userProfile = await getUserProfile(result.user.uid, false);
     if (!userProfile) {
-      throw new Error('ملف المستخدم غير موجود');
+      userProfile = defaultUserFields({
+        id: result.user.uid,
+        email: result.user.email || email,
+        displayName: result.user.displayName || email.split('@')[0] || 'مستخدم',
+        isEmailVerified: result.user.emailVerified,
+        profileComplete: false,
+        lastLoginAt: new Date().toISOString(),
+      });
+      await createUserProfile(userProfile);
+    }
+
+    try {
+      assertAccountAllowed(userProfile);
+    } catch (blocked) {
+      await signOutQuietly();
+      throw blocked;
     }
     return userProfile;
   } catch (error: any) {
@@ -204,13 +248,13 @@ export async function registerWithEmail(
       id: result.user.uid,
       email,
       displayName,
-      phoneNumber,
+      phoneNumber: phoneNumber ? formatAlgerianPhone(phoneNumber) : '',
       firstName: profile.firstName || names.firstName,
       lastName: profile.lastName ?? names.lastName,
       wilaya: profile.wilaya || '',
       commune: profile.commune || '',
-      accountType: profile.accountType,
-      profileComplete: profile.profileComplete ?? Boolean(profile.wilaya && profile.phoneNumber),
+      ...(profile.accountType ? { accountType: profile.accountType } : {}),
+      profileComplete: profile.profileComplete ?? Boolean(profile.wilaya && profile.phoneNumber && profile.accountType),
     });
     
     await createUserProfile(userProfile);
@@ -242,6 +286,12 @@ async function processGoogleUser(firebaseUser: User): Promise<AuthUser> {
 
     await createUserProfile(userProfile);
   } else {
+    try {
+      assertAccountAllowed(userProfile);
+    } catch (blocked) {
+      await signOutQuietly();
+      throw blocked;
+    }
     await updateUserProfile(userProfile.id, {
       lastLoginAt: new Date().toISOString(),
     });
@@ -377,7 +427,7 @@ export async function getUserProfile(uid: string, throwIfNotFound = true): Promi
       reviewsCount: data['reviewsCount'] || 0,
       accountStatus: data['accountStatus'] || 'active',
       role: data['role'] || 'user',
-      accountType: data['accountType'],
+      ...(data['accountType'] ? { accountType: data['accountType'] as AccountType } : {}),
       profileComplete:
         data['profileComplete'] ??
         Boolean(displayName?.trim() && phoneNumber?.trim() && data['wilaya'] && data['accountType']),
@@ -389,8 +439,9 @@ export async function getUserProfile(uid: string, throwIfNotFound = true): Promi
       socialLinks: data['socialLinks'] || {},
       preferences: data['preferences'] || DEFAULT_PREFERENCES,
     });
-  } catch (error: any) {
-    throw new Error(mapAuthErrorToArabic(error));
+  } catch (error: unknown) {
+    if (error instanceof Error && !('code' in error)) throw error;
+    throw new Error(mapFirebaseErrorToArabic(error as import('firebase/app').FirebaseError));
   }
 }
 
@@ -400,7 +451,7 @@ export async function getUserProfile(uid: string, throwIfNotFound = true): Promi
 export async function createUserProfile(profile: AuthUser): Promise<void> {
   try {
     const firestore = getFirebaseFirestore();
-    await setDoc(doc(firestore, 'users', profile.id), {
+    const payload = omitUndefined({
       ...profile,
       // Legacy fields for backward compatibility
       name: profile.displayName,
@@ -408,9 +459,11 @@ export async function createUserProfile(profile: AuthUser): Promise<void> {
       // Timestamps
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
-  } catch (error: any) {
-    throw new Error(mapAuthErrorToArabic(error));
+    } as Record<string, unknown>);
+    await setDoc(doc(firestore, 'users', profile.id), payload);
+  } catch (error: unknown) {
+    if (error instanceof Error && !('code' in error)) throw error;
+    throw new Error(mapFirebaseErrorToArabic(error as import('firebase/app').FirebaseError));
   }
 }
 
@@ -420,25 +473,26 @@ export async function createUserProfile(profile: AuthUser): Promise<void> {
 export async function updateUserProfile(uid: string, updates: Partial<AuthUser>): Promise<void> {
   try {
     const firestore = getFirebaseFirestore();
-    
-    // Prepare updates with legacy field compatibility
-    const updateData: any = {
-      ...updates,
+
+    const updateData: Record<string, unknown> = {
+      ...omitUndefined(updates as Record<string, unknown>),
       updatedAt: serverTimestamp(),
     };
-    
-    // Add legacy fields for backward compatibility
+
     if (updates.displayName || updates.name) {
-      updateData.name = updates.displayName || updates.name;
-      updateData.displayName = updates.displayName || updates.name;
+      updateData['name'] = updates.displayName || updates.name;
+      updateData['displayName'] = updates.displayName || updates.name;
     }
     if (updates.phoneNumber || updates.phone) {
-      updateData.phone = updates.phoneNumber || updates.phone;
-      updateData.phoneNumber = updates.phoneNumber || updates.phone;
+      const raw = updates.phoneNumber || updates.phone || '';
+      const normalized = formatAlgerianPhone(raw);
+      updateData['phone'] = normalized;
+      updateData['phoneNumber'] = normalized;
     }
-    
+
     await updateDoc(doc(firestore, 'users', uid), updateData);
-  } catch (error: any) {
-    throw new Error(mapAuthErrorToArabic(error));
+  } catch (error: unknown) {
+    if (error instanceof Error && !('code' in error)) throw error;
+    throw new Error(mapFirebaseErrorToArabic(error as import('firebase/app').FirebaseError));
   }
 }

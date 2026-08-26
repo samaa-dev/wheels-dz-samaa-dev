@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useApp } from "@/hooks/useApp";
 import { useAppDispatch } from "@/store/hooks";
@@ -159,17 +158,17 @@ function CompleteProfilePage() {
           </p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={submit} className="space-y-5">
+          <form onSubmit={submit} className="space-y-5 select-text">
             <Field label="الاسم" error={errors.name}>
               <Input
-                className="h-12"
+                className="h-12 select-text"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               />
             </Field>
             <Field label="رقم الهاتف" error={errors.phone}>
               <Input
-                className="h-12"
+                className="h-12 select-text"
                 inputMode="tel"
                 placeholder="0555123456"
                 value={form.phone}
@@ -223,24 +222,35 @@ function CompleteProfilePage() {
 
             {roleChoice === "seller" && (
               <Field label="نوع حساب البائع" error={errors.sellerType}>
-                <RadioGroup
-                  value={sellerType}
-                  onValueChange={(v) => setSellerType(v as AccountType)}
-                  className="gap-3"
-                >
+                <div className="grid gap-3">
                   {SELLER_ACCOUNT_TYPES.map((t) => (
-                    <label
+                    <button
                       key={t.value}
-                      className="flex items-start gap-3 rounded-md border border-border p-4 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                      type="button"
+                      onClick={() => setSellerType(t.value)}
+                      className={`flex items-start gap-3 rounded-md border-2 p-4 text-start transition-colors ${
+                        sellerType === t.value
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40"
+                      }`}
                     >
-                      <RadioGroupItem value={t.value} className="mt-1" />
+                      <span
+                        className={`mt-1 flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                          sellerType === t.value ? "border-primary" : "border-muted-foreground"
+                        }`}
+                        aria-hidden
+                      >
+                        {sellerType === t.value ? (
+                          <span className="size-2 rounded-full bg-primary" />
+                        ) : null}
+                      </span>
                       <span>
                         <span className="block font-semibold">{t.label}</span>
                         <span className="text-sm text-muted-foreground">{t.description}</span>
                       </span>
-                    </label>
+                    </button>
                   ))}
-                </RadioGroup>
+                </div>
               </Field>
             )}
 

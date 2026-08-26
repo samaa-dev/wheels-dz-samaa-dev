@@ -34,7 +34,7 @@ interface AppState {
   revealContact: (id: string) => boolean;
 }
 
-const CONTACT_LIMIT = 5;
+const CONTACT_LIMIT = 20;
 
 const AppContext = createContext<AppState | null>(null);
 

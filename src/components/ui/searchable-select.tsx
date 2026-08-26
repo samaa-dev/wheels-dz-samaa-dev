@@ -73,18 +73,22 @@ export function SearchableSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className={cn("w-[var(--radix-popover-trigger-width)] p-0", className)}
+        className={cn(
+          "w-[var(--radix-popover-trigger-width)] min-w-[min(100vw-2rem,18rem)] p-0",
+          className,
+        )}
         align="start"
         side="bottom"
         sideOffset={4}
+        collisionPadding={12}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command shouldFilter>
           <CommandInput
             placeholder={searchPlaceholder}
-            className="h-11 text-base"
-            autoFocus
+            className="h-12 text-base"
           />
-          <CommandList className="max-h-[min(50vh,280px)]">
+          <CommandList className="max-h-[min(60vh,360px)]">
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {allOptions.map((option) => (
@@ -95,7 +99,7 @@ export function SearchableSelect({
                     onValueChange(option.value);
                     setOpen(false);
                   }}
-                  className="py-3 text-sm"
+                  className="min-h-11 py-3 text-sm"
                 >
                   <Check
                     className={cn(

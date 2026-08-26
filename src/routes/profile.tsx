@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { useAllListings, useApp } from "@/hooks/useApp";
+import { useAllListings, useApp, CONTACT_LIMIT } from "@/hooks/useApp";
 import { getAccountTypeLabel, isProfileComplete } from "@/lib/auth/account";
 import { isModeratorOrAdmin } from "@/lib/auth/permissions";
 import { WILAYAS } from "@/lib/data/wilayas";
@@ -89,7 +89,7 @@ function ProfilePage() {
       {isModeratorOrAdmin(user) && (
         <div className="mt-4">
           <Button asChild variant="outline" className="h-11">
-            <Link to="/admin/reviews">إدارة التقييمات</Link>
+            <Link to="/admin/dashboard">لوحة التحكم</Link>
           </Button>
         </div>
       )}
@@ -181,7 +181,7 @@ function ProfilePage() {
                 </div>
               ))}
               <div className="flex items-center gap-2 rounded-md bg-muted p-4 text-sm text-muted-foreground">
-                <Phone className="size-4" /> حد عرض أرقام الهواتف: 5 إعلانات يومياً.
+                <Phone className="size-4" /> حد عرض أرقام الهواتف: {CONTACT_LIMIT} إعلانات يومياً.
               </div>
             </CardContent>
           </Card>

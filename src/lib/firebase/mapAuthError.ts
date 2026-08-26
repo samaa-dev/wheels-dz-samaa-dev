@@ -3,8 +3,12 @@ import { FirebaseError } from 'firebase/app';
 /**
  * Maps Firebase Auth errors to Arabic messages
  */
-export function mapAuthErrorToArabic(error: FirebaseError): string {
-  switch (error.code) {
+export function mapAuthErrorToArabic(error: FirebaseError | Error | unknown): string {
+  if (error instanceof Error && !('code' in error)) {
+    return error.message || 'حدث خطأ غير متوقع، حاول مرة أخرى';
+  }
+  const firebaseError = error as FirebaseError;
+  switch (firebaseError.code) {
     case 'auth/user-not-found':
       return 'لم يتم العثور على حساب بهذا البريد الإلكتروني';
     case 'auth/wrong-password':
@@ -37,8 +41,8 @@ export function mapAuthErrorToArabic(error: FirebaseError): string {
     case 'auth/internal-error':
       return 'خطأ داخلي، حاول مرة أخرى';
     default:
-      console.warn('Unmapped Firebase error:', error.code, error.message);
-      return 'حدث خطأ غير متوقع، حاول مرة أخرى';
+      console.warn('Unmapped Firebase error:', firebaseError.code, firebaseError.message);
+      return firebaseError.message || 'حدث خطأ غير متوقع، حاول مرة أخرى';
   }
 }
 

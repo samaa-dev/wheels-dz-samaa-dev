@@ -10,7 +10,6 @@ import {
   getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   query,
   where,
   orderBy,
@@ -25,6 +24,7 @@ import { getFirebaseFirestore } from './config';
 import { mapFirebaseErrorToArabic } from './mapAuthError';
 import type { AuthUser } from './auth';
 import type { Listing } from '../data/mock';
+import { docToListing } from './listings';
 import type { UserRole } from '../auth/permissions';
 import { hasPermission, canAssignRole } from '../auth/permissions';
 import { fields, toIso, toIsoOrNow } from './docData';
@@ -316,6 +316,10 @@ export async function suspendUser(
     if (!hasPermission(currentUser, 'users:suspend')) {
       throw new Error('ليس لديك صلاحية لتعليق المستخدمين');
     }
+
+    if (targetUserId === currentUser.id) {
+      throw new Error('لا يمكنك تعليق حسابك أنت');
+    }
     
     const firestore = getFirebaseFirestore();
     const userRef = doc(firestore, 'users', targetUserId);
@@ -324,6 +328,11 @@ export async function suspendUser(
     const userDoc = await getDoc(userRef);
     if (!userDoc.exists()) {
       throw new Error('المستخدم غير موجود');
+    }
+
+    const targetRole = fields(userDoc.data())['role'] as string | undefined;
+    if (targetRole === 'admin') {
+      throw new Error('لا يمكن تعليق حساب إداري');
     }
     
     const suspensionData: any = {
@@ -353,6 +362,7 @@ export async function suspendUser(
     console.log(`✅ User suspended: ${targetUserId}`);
   } catch (error: any) {
     console.error('Error suspending user:', error);
+    if (error instanceof Error && !('code' in error)) throw error;
     throw new Error(mapFirebaseErrorToArabic(error));
   }
 }
@@ -379,6 +389,9 @@ export async function unsuspendUser(
       suspendedBy: null,
       suspendedAt: null,
       suspensionExpiresAt: null,
+      deletionReason: null,
+      deletedBy: null,
+      deletedAt: null,
       unsuspendedBy: currentUser.id,
       unsuspendedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -389,18 +402,22 @@ export async function unsuspendUser(
       userId: currentUser.id,
       userName: currentUser.displayName,
       action: 'user_unsuspended',
-      details: `Unsuspended user ${targetUserId}`,
+      details: `Restored user ${targetUserId}`,
     });
     
-    console.log(`✅ User unsuspended: ${targetUserId}`);
+    console.log(`✅ User restored: ${targetUserId}`);
   } catch (error: any) {
     console.error('Error unsuspending user:', error);
+    if (error instanceof Error && !('code' in error)) throw error;
     throw new Error(mapFirebaseErrorToArabic(error));
   }
 }
 
 /**
- * حذف المستخدم نهائياً
+ * إيقاف حساب المستخدم (حذف ناعم) — لا يحذف Auth ولا يمس دور الإدارة.
+ * الحذف الصلب لملف Firestore مع بقاء تسجيل الدخول بالإيميل/جوجل كان يسبب:
+ * - فشل الدخول: «ملف المستخدم غير موجود»
+ * - أو إعادة إنشاء ملف بدون صلاحيات الإدارة
  */
 export async function deleteUser(
   currentUser: AuthUser,
@@ -408,61 +425,65 @@ export async function deleteUser(
   reason: string
 ): Promise<void> {
   try {
-    // فحص الأذونات (المدراء فقط)
     if (!hasPermission(currentUser, 'users:delete')) {
       throw new Error('ليس لديك صلاحية لحذف المستخدمين');
     }
-    
+
+    if (targetUserId === currentUser.id) {
+      throw new Error('لا يمكنك حذف حسابك الإداري — اطلب من مدير آخر إن لزم');
+    }
+
     const firestore = getFirebaseFirestore();
-    const batch = writeBatch(firestore);
-    
-    // حذف ملف المستخدم
     const userRef = doc(firestore, 'users', targetUserId);
-    batch.delete(userRef);
-    
-    // حذف إعلانات المستخدم
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      throw new Error('المستخدم غير موجود');
+    }
+
+    const targetRole = fields(userDoc.data())['role'] as string | undefined;
+    if (targetRole === 'admin') {
+      throw new Error('لا يمكن حذف حساب إداري. غيّر الدور إلى مستخدم أولاً أو علّق الحساب فقط');
+    }
+
+    // Soft-delete: keep profile + Auth so email/Google login does not recreate a blank user
+    await updateDoc(userRef, {
+      accountStatus: 'deleted',
+      deletionReason: reason,
+      deletedBy: currentUser.id,
+      deletedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Hide listings without destroying history
     const listingsQuery = query(
       collection(firestore, 'listings'),
       where('ownerId', '==', targetUserId)
     );
     const listingsSnapshot = await getDocs(listingsQuery);
-    listingsSnapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
+    const batch = writeBatch(firestore);
+    listingsSnapshot.docs.forEach((listingDoc) => {
+      batch.update(listingDoc.ref, {
+        status: 'deleted',
+        visibility: 'private',
+        updatedAt: serverTimestamp(),
+      });
     });
-    
-    // حذف رسائل المستخدم
-    const messagesQuery = query(
-      collection(firestore, 'messages'),
-      where('senderId', '==', targetUserId)
-    );
-    const messagesSnapshot = await getDocs(messagesQuery);
-    messagesSnapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-    
-    // حذف مفضلات المستخدم
-    const favoritesQuery = query(
-      collection(firestore, 'favorites'),
-      where('userId', '==', targetUserId)
-    );
-    const favoritesSnapshot = await getDocs(favoritesQuery);
-    favoritesSnapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-    
-    await batch.commit();
-    
-    // تسجيل النشاط
+    if (!listingsSnapshot.empty) {
+      await batch.commit();
+    }
+
     await logUserActivity({
       userId: currentUser.id,
       userName: currentUser.displayName,
       action: 'user_deleted',
-      details: `Permanently deleted user ${targetUserId}: ${reason}`,
+      details: `Soft-deleted user ${targetUserId}: ${reason}`,
     });
-    
-    console.log(`✅ User deleted: ${targetUserId}`);
+
+    console.log(`✅ User soft-deleted: ${targetUserId}`);
   } catch (error: any) {
     console.error('Error deleting user:', error);
+    if (error instanceof Error && !('code' in error)) throw error;
     throw new Error(mapFirebaseErrorToArabic(error));
   }
 }
@@ -547,6 +568,65 @@ export async function rejectListing(
   }
 }
 
+/**
+ * جلب إعلانات للإدارة (طابور القبول أو حسب الحالة)
+ */
+export async function getAdminListings(
+  currentUser: AuthUser,
+  options: {
+    status?: string;
+    searchQuery?: string;
+    limit?: number;
+  } = {}
+): Promise<Listing[]> {
+  try {
+    if (!hasPermission(currentUser, 'listings:view:all') && !hasPermission(currentUser, 'listings:view:pending')) {
+      throw new Error('ليس لديك صلاحية لعرض إعلانات الإدارة');
+    }
+
+    const firestore = getFirebaseFirestore();
+    const listingsRef = collection(firestore, 'listings');
+    const limitCount = options.limit ?? 100;
+    const status = options.status && options.status !== 'all' ? options.status : undefined;
+
+    let snapshot;
+    try {
+      if (status) {
+        snapshot = await getDocs(
+          query(listingsRef, where('status', '==', status), orderBy('createdAt', 'desc'), firestoreLimit(limitCount)),
+        );
+      } else {
+        snapshot = await getDocs(
+          query(listingsRef, orderBy('createdAt', 'desc'), firestoreLimit(limitCount)),
+        );
+      }
+    } catch {
+      // Fallback without composite index
+      if (status) {
+        snapshot = await getDocs(query(listingsRef, where('status', '==', status), firestoreLimit(limitCount)));
+      } else {
+        snapshot = await getDocs(query(listingsRef, firestoreLimit(limitCount)));
+      }
+    }
+
+    let listings = snapshot.docs.map(docToListing);
+    listings = listings.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+
+    const q = options.searchQuery?.trim().toLowerCase();
+    if (q) {
+      listings = listings.filter((l) =>
+        `${l.title} ${l.brand} ${l.ownerName} ${l.wilaya} ${l.size}`.toLowerCase().includes(q),
+      );
+    }
+
+    return listings;
+  } catch (error: any) {
+    console.error('Error fetching admin listings:', error);
+    if (error instanceof Error && !('code' in error)) throw error;
+    throw new Error(mapFirebaseErrorToArabic(error));
+  }
+}
+
 // ===== Activity & Logging Functions =====
 
 /**
@@ -615,7 +695,7 @@ export async function getAdminStats(currentUser: AuthUser): Promise<AdminStats> 
     const userStats = {
       total: users.length,
       active: users.filter(u => u.accountStatus === 'active').length,
-      suspended: users.filter(u => u.accountStatus === 'suspended').length,
+      suspended: users.filter(u => u.accountStatus === 'suspended' || u.accountStatus === 'deleted').length,
       newThisMonth: users.filter(u => {
         const memberDate = new Date(u.memberSince);
         const monthAgo = new Date();

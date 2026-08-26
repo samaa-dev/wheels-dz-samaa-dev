@@ -74,10 +74,23 @@ function MyListingsPage() {
                 <Button asChild variant="outline" className="h-11">
                   <Link to="/edit-listing/$id" params={{ id: l.id }}>تعديل</Link>
                 </Button>
-                <Button variant="outline" className="h-11" onClick={() => { updateListingStatus(l.id, "pending"); toast.success("تم تحديث حالة الإعلان"); }}>ترقية</Button>
-                <Button variant="outline" className="h-11" onClick={() => { updateListingStatus(l.id, l.status === "active" ? "inactive" : "active"); toast.success("تم تحديث حالة الإعلان"); }}>
-                  {l.status === "active" ? "إيقاف" : "تفعيل"}
-                </Button>
+                {l.status === "pending" ? (
+                  <Badge variant="outline" className="h-11 px-3 text-sm font-medium">بانتظار موافقة الإدارة</Badge>
+                ) : l.status === "blocked" ? (
+                  <Badge variant="destructive" className="h-11 px-3 text-sm font-medium">مرفوض</Badge>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="h-11"
+                    disabled={l.status === "pending"}
+                    onClick={() => {
+                      updateListingStatus(l.id, l.status === "active" ? "inactive" : "active");
+                      toast.success("تم تحديث حالة الإعلان");
+                    }}
+                  >
+                    {l.status === "active" ? "إيقاف" : "تفعيل"}
+                  </Button>
+                )}
                 <Button variant="ghost" className="h-11 text-destructive" onClick={() => { removeListing(l.id); toast.success("تم حذف الإعلان"); }}>حذف</Button>
               </div>
             </Card>

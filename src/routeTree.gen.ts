@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CompleteProfileRouteImport } from './routes/complete-profile'
 import { Route as CreateListingRouteImport } from './routes/create-listing'
 import { Route as FavoritesRouteImport } from './routes/favorites'
@@ -18,13 +19,23 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyListingsRouteImport } from './routes/my-listings'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as AdminListingsRouteImport } from './routes/admin.listings'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
+import { Route as AdminStatsRouteImport } from './routes/admin.stats'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as EditListingIdRouteImport } from './routes/edit-listing.$id'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompleteProfileRoute = CompleteProfileRouteImport.update({
@@ -67,10 +78,35 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminListingsRoute = AdminListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminReviewsRoute = AdminReviewsRouteImport.update({
-  id: '/admin/reviews',
-  path: '/admin/reviews',
-  getParentRoute: () => rootRouteImport,
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStatsRoute = AdminStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
 } as any)
 const EditListingIdRoute = EditListingIdRouteImport.update({
   id: '/edit-listing/$id',
@@ -85,6 +121,7 @@ const ListingIdRoute = ListingIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/complete-profile': typeof CompleteProfileRoute
   '/create-listing': typeof CreateListingRoute
   '/favorites': typeof FavoritesRoute
@@ -93,9 +130,14 @@ export interface FileRoutesByFullPath {
   '/my-listings': typeof MyListingsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/listings': typeof AdminListingsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/stats': typeof AdminStatsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/edit-listing/$id': typeof EditListingIdRoute
   '/listing/$id': typeof ListingIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -107,13 +149,19 @@ export interface FileRoutesByTo {
   '/my-listings': typeof MyListingsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/listings': typeof AdminListingsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/stats': typeof AdminStatsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/edit-listing/$id': typeof EditListingIdRoute
   '/listing/$id': typeof ListingIdRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/complete-profile': typeof CompleteProfileRoute
   '/create-listing': typeof CreateListingRoute
   '/favorites': typeof FavoritesRoute
@@ -122,14 +170,20 @@ export interface FileRoutesById {
   '/my-listings': typeof MyListingsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/listings': typeof AdminListingsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/stats': typeof AdminStatsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/edit-listing/$id': typeof EditListingIdRoute
   '/listing/$id': typeof ListingIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/complete-profile'
     | '/create-listing'
     | '/favorites'
@@ -138,9 +192,14 @@ export interface FileRouteTypes {
     | '/my-listings'
     | '/profile'
     | '/register'
+    | '/admin/dashboard'
+    | '/admin/listings'
     | '/admin/reviews'
+    | '/admin/stats'
+    | '/admin/users'
     | '/edit-listing/$id'
     | '/listing/$id'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -152,12 +211,18 @@ export interface FileRouteTypes {
     | '/my-listings'
     | '/profile'
     | '/register'
+    | '/admin/dashboard'
+    | '/admin/listings'
     | '/admin/reviews'
+    | '/admin/stats'
+    | '/admin/users'
     | '/edit-listing/$id'
     | '/listing/$id'
+    | '/admin'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/complete-profile'
     | '/create-listing'
     | '/favorites'
@@ -166,13 +231,19 @@ export interface FileRouteTypes {
     | '/my-listings'
     | '/profile'
     | '/register'
+    | '/admin/dashboard'
+    | '/admin/listings'
     | '/admin/reviews'
+    | '/admin/stats'
+    | '/admin/users'
     | '/edit-listing/$id'
     | '/listing/$id'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CompleteProfileRoute: typeof CompleteProfileRoute
   CreateListingRoute: typeof CreateListingRoute
   FavoritesRoute: typeof FavoritesRoute
@@ -181,7 +252,6 @@ export interface RootRouteChildren {
   MyListingsRoute: typeof MyListingsRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
-  AdminReviewsRoute: typeof AdminReviewsRoute
   EditListingIdRoute: typeof EditListingIdRoute
   ListingIdRoute: typeof ListingIdRoute
 }
@@ -193,6 +263,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/complete-profile': {
@@ -251,12 +328,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/listings': {
+      id: '/admin/listings'
+      path: '/listings'
+      fullPath: '/admin/listings'
+      preLoaderRoute: typeof AdminListingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/reviews': {
       id: '/admin/reviews'
-      path: '/admin/reviews'
+      path: '/reviews'
       fullPath: '/admin/reviews'
       preLoaderRoute: typeof AdminReviewsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/stats': {
+      id: '/admin/stats'
+      path: '/stats'
+      fullPath: '/admin/stats'
+      preLoaderRoute: typeof AdminStatsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/edit-listing/$id': {
       id: '/edit-listing/$id'
@@ -275,8 +387,29 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminListingsRoute: typeof AdminListingsRoute
+  AdminReviewsRoute: typeof AdminReviewsRoute
+  AdminStatsRoute: typeof AdminStatsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminListingsRoute: AdminListingsRoute,
+  AdminReviewsRoute: AdminReviewsRoute,
+  AdminStatsRoute: AdminStatsRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   CompleteProfileRoute: CompleteProfileRoute,
   CreateListingRoute: CreateListingRoute,
   FavoritesRoute: FavoritesRoute,
@@ -285,7 +418,6 @@ const rootRouteChildren: RootRouteChildren = {
   MyListingsRoute: MyListingsRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
-  AdminReviewsRoute: AdminReviewsRoute,
   EditListingIdRoute: EditListingIdRoute,
   ListingIdRoute: ListingIdRoute,
 }

@@ -86,7 +86,16 @@ export const updateProfileThunk = createAsyncThunk(
 export const hydrateUserThunk = createAsyncThunk(
   'auth/hydrateUser',
   async (uid: string) => {
-    return await getUserProfile(uid);
+    // Don't throw when profile is missing (race during first Google signup)
+    const profile = await getUserProfile(uid, false);
+    if (
+      profile &&
+      (profile.accountStatus === 'deleted' || profile.accountStatus === 'suspended')
+    ) {
+      await signOutUser();
+      return null;
+    }
+    return profile;
   }
 );
 
@@ -194,11 +203,15 @@ const authSlice = createSlice({
     // Hydrate user
     builder
       .addCase(hydrateUserThunk.fulfilled, (state, action) => {
-        state.user = action.payload;
+        if (action.payload) {
+          state.user = action.payload;
+        } else {
+          state.user = null;
+        }
         state.hydrated = true;
       })
       .addCase(hydrateUserThunk.rejected, (state) => {
-        state.user = null;
+        // Keep existing user if hydrate failed (e.g. race); only clear on logout
         state.hydrated = true;
       });
   },

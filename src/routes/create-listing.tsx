@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -51,7 +50,7 @@ interface Draft {
   brand: string;
   model: string;
   year: string;
-  condition: ListingCondition;
+  condition: ListingCondition | "";
   description: string;
   size: string;
   quantity: number;
@@ -66,7 +65,7 @@ const EMPTY: Draft = {
   brand: "",
   model: "",
   year: "",
-  condition: "used",
+  condition: "",
   description: "",
   size: "",
   quantity: 4,
@@ -82,9 +81,8 @@ function CreateListingPage() {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  type Errs = Partial<Record<"title" | "description" | "wilaya" | "images", string>>;
+  type Errs = Partial<Record<"title" | "description" | "wilaya" | "images" | "condition", string>>;
   const [errors, setErrors] = useState<Errs>({});
-  const [terms, setTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -102,9 +100,10 @@ function CreateListingPage() {
   const validateStep = () => {
     const e: Errs = {};
     if (step === 0) {
-      if (draft.title.trim().length < 10) e.title = "العنوان يجب أن يحتوي 10 أحرف على الأقل";
+      if (draft.title.trim().length < 5) e.title = "العنوان يجب أن يحتوي 5 أحرف على الأقل";
     }
     if (step === 1) {
+      if (!draft.condition) e.condition = "اختر حالة الإطار";
       if (draft.description.trim().split(/\s+/).filter(Boolean).length > 500) {
         e.description = "الوصف يتجاوز 500 كلمة";
       }
@@ -147,11 +146,11 @@ function CreateListingPage() {
   };
 
   const submit = async () => {
-    if (!terms) {
-      toast.error("يجب الموافقة على الشروط");
+    if (!user) return;
+    if (!draft.condition) {
+      toast.error("اختر حالة الإطار");
       return;
     }
-    if (!user) return;
     if (imageFiles.length === 0) {
       toast.error("أضف صورة واحدة على الأقل من جهازك");
       return;
@@ -188,7 +187,7 @@ function CreateListingPage() {
         coverImageUrl: "",
         images: [] as string[],
         sellerId: user.id,
-        status: "active" as const,
+        status: "pending" as const,
         visibility: "public" as const,
         isPromoted: false,
         featured: false,
@@ -200,7 +199,7 @@ function CreateListingPage() {
       await createListing(listingData, imageFiles);
       writeStore(STORAGE_KEYS.draft, EMPTY);
       setImageFiles([]);
-      toast.success("تم نشر إعلانك بنجاح");
+      toast.success("تم إرسال إعلانك للمراجعة — سيظهر بعد موافقة الإدارة");
       navigate({ to: "/my-listings" });
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "تعذّر نشر الإعلان، حاول مرة أخرى");
@@ -342,8 +341,12 @@ function CreateListingPage() {
 
           {step === 1 && (
             <>
-              <F label="الحالة">
-                <RadioGroup value={draft.condition} onValueChange={(v) => set("condition", v as ListingCondition)} className="gap-3">
+              <F label="الحالة" error={errors.condition}>
+                <RadioGroup
+                  value={draft.condition || undefined}
+                  onValueChange={(v) => set("condition", v as ListingCondition)}
+                  className="gap-3"
+                >
                   {CONDITIONS.map((c) => (
                     <label key={c.value} className="flex items-start gap-3 rounded-md border border-border p-4">
                       <RadioGroupItem value={c.value} className="mt-1" />
@@ -450,10 +453,6 @@ function CreateListingPage() {
                   </div>
                 ))}
               </div>
-              <label className="flex items-start gap-3 text-sm">
-                <Checkbox checked={terms} onCheckedChange={(v) => setTerms(Boolean(v))} />
-                <span>أقر بأن المعلومات صحيحة وأوافق على شروط النشر.</span>
-              </label>
             </>
           )}
 

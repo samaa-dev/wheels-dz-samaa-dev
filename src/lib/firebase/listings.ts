@@ -15,10 +15,18 @@ import {
   type DocumentData,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
-import { getFirebaseFirestore } from './config';
+import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { mapFirebaseErrorToArabic } from './mapAuthError';
 import type { Listing } from '../data/mock';
 import { fields, toIso, toIsoOrNow } from './docData';
+
+function omitUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}
 
 /**
  * Fetch all active listings
@@ -146,29 +154,47 @@ export async function fetchListingById(listingId: string): Promise<Listing | nul
  */
 export async function createListing(listingData: Omit<Listing, 'id' | 'createdAt' | 'views' | 'contactClicks' | 'favorites' | 'shareCount' | 'publishedAt'>): Promise<string> {
   try {
+    const auth = getFirebaseAuth();
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      throw new Error('يجب تسجيل الدخول أولاً');
+    }
+
     const firestore = getFirebaseFirestore();
     const listingsRef = collection(firestore, 'listings');
-    
-    const docRef = await addDoc(listingsRef, {
+
+    // Always bind ownership to the signed-in Auth UID (rules check request.auth.uid)
+    const ownerId = uid;
+    const payload = omitUndefined({
       ...listingData,
-      // Initialize counters
+      ownerId,
+      sellerId: ownerId,
+      price: typeof listingData.price === 'number' ? listingData.price : 0,
+      imageUrls: listingData.imageUrls ?? [],
+      images: listingData.imageUrls ?? listingData.images ?? [],
+      coverImageUrl: listingData.coverImageUrl ?? '',
       views: 0,
       contactClicks: 0,
       favorites: 0,
       shareCount: 0,
-      // Timestamps
       createdAt: serverTimestamp(),
       publishedAt: listingData.status === 'active' ? serverTimestamp() : null,
       updatedAt: serverTimestamp(),
-      // Legacy fields for backward compatibility
-      sellerId: listingData.ownerId,
-      images: listingData.imageUrls,
-      featured: listingData.isPromoted,
+      featured: listingData.isPromoted ?? false,
     });
+
+    const docRef = await addDoc(listingsRef, payload);
     
     return docRef.id;
-  } catch (error: any) {
-    throw new Error(mapFirebaseErrorToArabic(error));
+  } catch (error: unknown) {
+    const mapped = mapFirebaseErrorToArabic(error as import('firebase/app').FirebaseError);
+    const code = error && typeof error === 'object' && 'code' in error ? String((error as { code: string }).code) : '';
+    if (code === 'permission-denied') {
+      throw new Error(
+        'رفض Firestore حفظ الإعلان (صلاحيات). انشر ملف firestore.rules المحدّث — السعر 0 والعنوان من 5 أحرف يجب أن يكونا مسموحين.',
+      );
+    }
+    throw new Error(mapped);
   }
 }
 
@@ -353,7 +379,7 @@ export async function fetchRecentListings(limitCount = 12): Promise<Listing[]> {
 /**
  * Convert Firestore document to Listing object
  */
-function docToListing(snapshot: QueryDocumentSnapshot<DocumentData>): Listing {
+export function docToListing(snapshot: QueryDocumentSnapshot<DocumentData>): Listing {
   const data = fields(snapshot.data());
   const imageUrls: string[] = data['imageUrls'] || data['images'] || [];
   const ownerId = data['ownerId'] || data['sellerId'] || '';

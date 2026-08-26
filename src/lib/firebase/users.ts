@@ -11,6 +11,9 @@ import { mapFirebaseErrorToArabic } from './mapAuthError';
 import { getUserProfile, type AuthUser } from './auth';
 import { fields } from './docData';
 
+/** Max distinct listing phones a user may reveal */
+export const CONTACT_REVEAL_LIMIT = 20;
+
 /**
  * Update user's favorites list
  */
@@ -66,7 +69,7 @@ export async function getUserFavorites(uid: string): Promise<string[]> {
 }
 
 /**
- * Check if user can reveal more contacts (limit of 5)
+ * Check if user can reveal more contacts
  */
 export async function canRevealContact(uid: string, listingId: string): Promise<boolean> {
   try {
@@ -84,8 +87,7 @@ export async function canRevealContact(uid: string, listingId: string): Promise<
       return true;
     }
     
-    // Check limit of 5 contacts
-    return revealedContacts.length < 5;
+    return revealedContacts.length < CONTACT_REVEAL_LIMIT;
   } catch (error: any) {
     console.error('Error checking contact reveal limit:', error);
     return false;
@@ -113,7 +115,7 @@ export async function revealContact(uid: string, listingId: string): Promise<{ a
     }
     
     // Check limit
-    if (revealedContacts.length >= 5) {
+    if (revealedContacts.length >= CONTACT_REVEAL_LIMIT) {
       return { allowed: false };
     }
     

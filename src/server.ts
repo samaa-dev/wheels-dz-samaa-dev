@@ -48,13 +48,27 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const response = await normalizeCatastrophicSsrResponse(
+        await handler.fetch(request, env, ctx),
+      );
+      const headers = new Headers(response.headers);
+      // Needed for Firebase Auth Google popup (window.closed)
+      if (!headers.has("Cross-Origin-Opener-Policy")) {
+        headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+      }
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
         status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+        },
       });
     }
   },

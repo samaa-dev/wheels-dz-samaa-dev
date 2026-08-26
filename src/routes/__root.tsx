@@ -90,7 +90,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "سوق جزائري لبيع وشراء الإطارات والجنوط الجديدة والمستعملة في كل الولايات.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:image", content: "/logo.png" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:image", content: "/logo.png" },
     ],
     links: [
       {
@@ -103,7 +105,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/logo.png" },
     ],
   }),
   shellComponent: RootShell,

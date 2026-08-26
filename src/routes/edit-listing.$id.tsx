@@ -183,8 +183,8 @@ function EditListingPage() {
 
   const validateStep = () => {
     const e: Errs = {};
-    if (step === 0 && draft.title.trim().length < 10) {
-      e.title = "العنوان يجب أن يحتوي 10 أحرف على الأقل";
+    if (step === 0 && draft.title.trim().length < 5) {
+      e.title = "العنوان يجب أن يحتوي 5 أحرف على الأقل";
     }
     if (step === 1 && draft.description.trim().split(/\s+/).filter(Boolean).length > 500) {
       e.description = "الوصف يتجاوز 500 كلمة";

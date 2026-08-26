@@ -13,11 +13,13 @@ import {
   approveListing,
   rejectListing,
   getAdminStats,
+  getAdminListings,
   type AdminUser,
   type AdminStats,
 } from '../../lib/firebase/admin';
 import type { UserRole } from '../../lib/auth/permissions';
 import type { AuthUser } from '../../lib/firebase/auth';
+import type { Listing } from '../../lib/data/mock';
 
 // ===== State Types =====
 
@@ -41,6 +43,10 @@ interface AdminState {
   statsError: string | null;
   
   // إدارة الإعلانات
+  listings: Listing[];
+  listingsLoading: boolean;
+  listingsError: string | null;
+  listingsStatusFilter: string;
   moderatingListing: boolean;
   moderationError: string | null;
   
@@ -77,6 +83,10 @@ const initialState: AdminState = {
   statsLoading: false,
   statsError: null,
   
+  listings: [],
+  listingsLoading: false,
+  listingsError: null,
+  listingsStatusFilter: 'pending',
   moderatingListing: false,
   moderationError: null,
   
@@ -246,6 +256,24 @@ export const rejectListingThunk = createAsyncThunk(
 );
 
 /**
+ * جلب إعلانات الإدارة
+ */
+export const fetchAdminListingsThunk = createAsyncThunk(
+  'admin/fetchListings',
+  async ({
+    currentUser,
+    status,
+    searchQuery,
+  }: {
+    currentUser: AuthUser;
+    status?: string;
+    searchQuery?: string;
+  }) => {
+    return await getAdminListings(currentUser, { status, searchQuery, limit: 100 });
+  }
+);
+
+/**
  * جلب إحصائيات الإدارة
  */
 export const fetchAdminStatsThunk = createAsyncThunk(
@@ -319,6 +347,11 @@ const adminSlice = createSlice({
       state.updateUserError = null;
       state.statsError = null;
       state.moderationError = null;
+      state.listingsError = null;
+    },
+
+    setListingsStatusFilter: (state, action: PayloadAction<string>) => {
+      state.listingsStatusFilter = action.payload;
     },
     
     // إعادة تعيين الترقيم
@@ -334,11 +367,13 @@ const adminSlice = createSlice({
       state.users = [];
       state.selectedUser = null;
       state.stats = null;
+      state.listings = [];
       state.activityLog = [];
       state.usersError = null;
       state.updateUserError = null;
       state.statsError = null;
       state.moderationError = null;
+      state.listingsError = null;
       state.usersPagination = {
         lastDoc: null,
         hasMore: false,
@@ -430,14 +465,14 @@ const adminSlice = createSlice({
         });
       });
 
-    // حذف المستخدم
+    // حذف المستخدم (ناعم)
     builder
       .addCase(deleteUserThunk.fulfilled, (state, action) => {
         const { targetUserId } = action.payload;
         
-        adminSlice.caseReducers.removeUserLocally(state, {
-          type: 'admin/removeUserLocally',
-          payload: targetUserId,
+        adminSlice.caseReducers.updateUserLocally(state, {
+          type: 'admin/updateUserLocally',
+          payload: { userId: targetUserId, updates: { accountStatus: 'deleted' } },
         });
       });
 
@@ -447,9 +482,10 @@ const adminSlice = createSlice({
         state.moderatingListing = true;
         state.moderationError = null;
       })
-      .addCase(approveListingThunk.fulfilled, (state) => {
+      .addCase(approveListingThunk.fulfilled, (state, action) => {
         state.moderatingListing = false;
         state.moderationError = null;
+        state.listings = state.listings.filter((l) => l.id !== action.payload.listingId);
       })
       .addCase(approveListingThunk.rejected, (state, action) => {
         state.moderatingListing = false;
@@ -462,13 +498,30 @@ const adminSlice = createSlice({
         state.moderatingListing = true;
         state.moderationError = null;
       })
-      .addCase(rejectListingThunk.fulfilled, (state) => {
+      .addCase(rejectListingThunk.fulfilled, (state, action) => {
         state.moderatingListing = false;
         state.moderationError = null;
+        state.listings = state.listings.filter((l) => l.id !== action.payload.listingId);
       })
       .addCase(rejectListingThunk.rejected, (state, action) => {
         state.moderatingListing = false;
         state.moderationError = action.error.message || 'فشل في رفض الإعلان';
+      });
+
+    // جلب إعلانات الإدارة
+    builder
+      .addCase(fetchAdminListingsThunk.pending, (state) => {
+        state.listingsLoading = true;
+        state.listingsError = null;
+      })
+      .addCase(fetchAdminListingsThunk.fulfilled, (state, action) => {
+        state.listingsLoading = false;
+        state.listings = action.payload;
+        state.listingsError = null;
+      })
+      .addCase(fetchAdminListingsThunk.rejected, (state, action) => {
+        state.listingsLoading = false;
+        state.listingsError = action.error.message || 'فشل في جلب الإعلانات';
       });
 
     // جلب الإحصائيات
@@ -498,6 +551,7 @@ export const {
   updateUserLocally,
   removeUserLocally,
   clearAdminErrors,
+  setListingsStatusFilter,
   resetPagination,
   resetAdminState,
 } = adminSlice.actions;
@@ -513,6 +567,12 @@ export const selectSelectedUser = (state: { admin: AdminState }) =>
 
 export const selectAdminStats = (state: { admin: AdminState }) =>
   state.admin.stats;
+
+export const selectAdminListings = (state: { admin: AdminState }) =>
+  state.admin.listings;
+
+export const selectAdminListingsLoading = (state: { admin: AdminState }) =>
+  state.admin.listingsLoading;
 
 export const selectAdminFilters = (state: { admin: AdminState }) =>
   state.admin.filters;

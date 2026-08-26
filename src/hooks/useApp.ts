@@ -25,6 +25,9 @@ import {
 } from '../store/slices/listingsSlice';
 import { MOCK_LISTINGS, type Listing } from '../lib/data/mock';
 
+/** Daily limit for revealing seller phone numbers */
+export const CONTACT_LIMIT = 20;
+
 /**
  * Compatibility hook that provides the same interface as the old AppProvider's useApp()
  * but backed by Redux store instead of Context
@@ -178,7 +181,7 @@ export function useApp() {
       const alreadyRevealed = revealedContacts.includes(id);
       if (alreadyRevealed) return true;
       
-      const canReveal = revealedContacts.length < 5;
+      const canReveal = revealedContacts.length < CONTACT_LIMIT;
       if (canReveal) {
         dispatch(revealContactThunk({ uid: user.id, listingId: id }));
       }
@@ -240,6 +243,3 @@ export function useIsDemoListings(): boolean {
 export function useLiveListings(): boolean {
   return useAppSelector(state => state.ui.liveListings);
 }
-
-// Export the old constant for compatibility
-export const CONTACT_LIMIT = 5;

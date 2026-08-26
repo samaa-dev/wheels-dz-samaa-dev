@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  Calendar, Copy, Eye, Facebook, Flag, MapPin, MessageCircle, Phone, Printer, Share2, Tag,
+  Calendar, ChevronLeft, ChevronRight, Copy, Eye, Facebook, Flag, MapPin, MessageCircle, Phone, Printer, Share2, Tag,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ListingCard } from "@/components/listings/ListingCard";
 import { ReviewForm } from "@/components/listings/ReviewForm";
@@ -19,17 +19,19 @@ import { useAllListings, useApp } from "@/hooks/useApp";
 import { CATEGORY_LABEL, CONDITION_LABEL, normalizeCondition } from "@/lib/data/catalog";
 import { getSeller } from "@/lib/data/mock";
 import { getSellerRatingSummary } from "@/lib/firebase/reviews";
-import { formatDate, formatListingPrice, formatNumber, timeAgo } from "@/lib/format";
+import { formatDate, formatNumber, timeAgo } from "@/lib/format";
 import { callOrCopyPhone, toTelNumber } from "@/lib/phone";
 import { cn } from "@/lib/utils";
+
+const SWIPE_THRESHOLD = 40;
 
 export const Route = createFileRoute("/listing/$id")({
   head: ({ params }) => ({
     meta: [
       { title: `تفاصيل الإعلان ${params.id} | عجلات الجزائر` },
-      { name: "description", content: "تفاصيل كاملة عن الإعلان: الصور، السعر، الحالة، المواصفات وبيانات البائع." },
+      { name: "description", content: "تفاصيل كاملة عن الإعلان: الصور، الحالة، المواصفات وبيانات البائع." },
       { property: "og:title", content: `تفاصيل الإعلان ${params.id} | عجلات الجزائر` },
-      { property: "og:description", content: "الصور، السعر، الحالة، المواصفات وبيانات البائع." },
+      { property: "og:description", content: "الصور، الحالة، المواصفات وبيانات البائع." },
     ],
   }),
   component: ListingDetail,
@@ -44,6 +46,8 @@ function ListingDetail() {
   const [lightbox, setLightbox] = useState(false);
   const [phoneShown, setPhoneShown] = useState(false);
   const [sellerRating, setSellerRating] = useState({ rating: 0, count: 0 });
+  const galleryPointer = useRef<{ x: number; y: number } | null>(null);
+  const gallerySwiped = useRef(false);
 
   const sellerId = listing?.ownerId || listing?.sellerId;
 
@@ -117,12 +121,89 @@ function ListingDetail() {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
           <Card className="overflow-hidden p-0">
-            <button className="block w-full" onClick={() => setLightbox(true)}>
-              <img src={images[active]} alt={listing.title} width={800} height={600} className="aspect-[4/3] w-full object-cover" />
-            </button>
-            <div className="flex gap-2 p-3">
+            <div
+              className="relative touch-pan-y"
+              onPointerDown={(e) => {
+                if (images.length < 2 || e.button !== 0) return;
+                galleryPointer.current = { x: e.clientX, y: e.clientY };
+                gallerySwiped.current = false;
+              }}
+              onPointerUp={(e) => {
+                if (!galleryPointer.current || images.length < 2) return;
+                const dx = e.clientX - galleryPointer.current.x;
+                const dy = e.clientY - galleryPointer.current.y;
+                galleryPointer.current = null;
+                if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+                gallerySwiped.current = true;
+                setActive((i) => (i + (dx < 0 ? 1 : -1) + images.length) % images.length);
+              }}
+              onPointerCancel={() => {
+                galleryPointer.current = null;
+              }}
+            >
+              <button
+                type="button"
+                className="block w-full"
+                onClick={() => {
+                  if (gallerySwiped.current) {
+                    gallerySwiped.current = false;
+                    return;
+                  }
+                  setLightbox(true);
+                }}
+              >
+                <img
+                  src={images[active]}
+                  alt={listing.title}
+                  width={800}
+                  height={600}
+                  draggable={false}
+                  className="aspect-[4/3] w-full object-cover"
+                />
+              </button>
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="الصورة السابقة"
+                    className="absolute start-2 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/90 shadow-sm"
+                    onClick={() => setActive((i) => (i - 1 + images.length) % images.length)}
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="الصورة التالية"
+                    className="absolute end-2 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/90 shadow-sm"
+                    onClick={() => setActive((i) => (i + 1) % images.length)}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                    {images.map((_: string, i: number) => (
+                      <span
+                        key={i}
+                        className={cn(
+                          "h-1.5 rounded-full",
+                          i === active ? "w-4 bg-primary" : "w-1.5 bg-background/70",
+                        )}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2 overflow-x-auto p-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {images.map((img: string, i: number) => (
-                <button key={i} onClick={() => setActive(i)} className={cn("size-20 overflow-hidden rounded-md border-2", i === active ? "border-primary" : "border-transparent")}>
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActive(i)}
+                  className={cn(
+                    "size-20 shrink-0 overflow-hidden rounded-md border-2",
+                    i === active ? "border-primary" : "border-transparent",
+                  )}
+                >
                   <img src={img} alt={`صورة ${i + 1}`} loading="lazy" width={160} height={120} className="size-full object-cover" />
                 </button>
               ))}
@@ -133,9 +214,6 @@ function ListingDetail() {
             <CardHeader>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
                 <CardTitle className="min-w-0 text-xl leading-8">{listing.title}</CardTitle>
-                {formatListingPrice(listing.price) && (
-                  <span className="shrink-0 text-2xl font-black text-primary">{formatListingPrice(listing.price)}</span>
-                )}
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Badge variant="secondary">{CATEGORY_LABEL[listing.category]}</Badge>
