@@ -31,11 +31,11 @@ export function ListingCard({
   /** Dense 2-up tiles (home mobile) */
   compact?: boolean;
 }) {
-  const { isFavorite, toggleFavorite, views, revealContact } = useApp();
+  const { isFavorite, toggleFavorite, revealContact } = useApp();
   const [index, setIndex] = useState(0);
   const images = listing.imageUrls.length ? listing.imageUrls : listing.images;
   const fav = isFavorite(listing.id);
-  const totalViews = listing.views + (views[listing.id] ?? 0);
+  const totalViews = listing.views;
   const multi = images.length > 1;
 
   const pointerStart = useRef<{ x: number; y: number } | null>(null);

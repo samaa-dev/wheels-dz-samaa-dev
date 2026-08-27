@@ -17,11 +17,11 @@ import { updateListingThunk } from "@/store/slices/listingsSlice";
 import { isProfileComplete, isSellerAccount } from "@/lib/auth/account";
 import { hasPermission } from "@/lib/auth/permissions";
 import {
-  BRAND_MODEL_EXAMPLES,
   BRANDS,
   CONDITIONS,
   SIZE_EXAMPLE,
   SIZE_HELP_TEXT,
+  getModelPlaceholder,
   normalizeCondition,
   type ListingCondition,
 } from "@/lib/data/catalog";
@@ -175,9 +175,7 @@ function EditListingPage() {
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((p) => (p ? { ...p, [k]: v } : p));
 
-  const modelPlaceholder = draft.brand
-    ? BRAND_MODEL_EXAMPLES[draft.brand] ?? "اسم الموديل"
-    : "مثال: Pilot Sport 4";
+  const modelPlaceholder = getModelPlaceholder(draft.brand || undefined);
 
   const communeOptions = getCommunes(draft.wilaya).map((c) => ({ value: c, label: c }));
 
@@ -323,6 +321,7 @@ function EditListingPage() {
               </F>
               <F label="الموديل (اختياري)">
                 <Input className="h-12" value={draft.model} onChange={(e) => set("model", e.target.value)} placeholder={modelPlaceholder} />
+                <p className="text-xs text-muted-foreground">اكتب اسم طراز الإطار كما يظهر على الجدار الجانبي</p>
               </F>
               <F label="سنة الصنع (اختياري)">
                 <Input type="number" className="h-12" value={draft.year} onChange={(e) => set("year", e.target.value)} />

@@ -14,6 +14,7 @@ import {
   rejectListing,
   getAdminStats,
   getAdminListings,
+  setAdminListingStatus,
   type AdminUser,
   type AdminStats,
 } from '../../lib/firebase/admin';
@@ -274,6 +275,25 @@ export const fetchAdminListingsThunk = createAsyncThunk(
 );
 
 /**
+ * إيقاف / تفعيل إعلان
+ */
+export const setAdminListingStatusThunk = createAsyncThunk(
+  'admin/setListingStatus',
+  async ({
+    currentUser,
+    listingId,
+    status,
+  }: {
+    currentUser: AuthUser;
+    listingId: string;
+    status: 'active' | 'inactive';
+  }) => {
+    await setAdminListingStatus(currentUser, listingId, status);
+    return { listingId, status };
+  }
+);
+
+/**
  * جلب إحصائيات الإدارة
  */
 export const fetchAdminStatsThunk = createAsyncThunk(
@@ -522,6 +542,25 @@ const adminSlice = createSlice({
       .addCase(fetchAdminListingsThunk.rejected, (state, action) => {
         state.listingsLoading = false;
         state.listingsError = action.error.message || 'فشل في جلب الإعلانات';
+      });
+
+    builder
+      .addCase(setAdminListingStatusThunk.pending, (state) => {
+        state.moderatingListing = true;
+        state.moderationError = null;
+      })
+      .addCase(setAdminListingStatusThunk.fulfilled, (state, action) => {
+        state.moderatingListing = false;
+        const { listingId, status } = action.payload;
+        const item = state.listings.find((l) => l.id === listingId);
+        if (item) item.status = status;
+        if (state.listingsStatusFilter !== 'all' && state.listingsStatusFilter !== status) {
+          state.listings = state.listings.filter((l) => l.id !== listingId);
+        }
+      })
+      .addCase(setAdminListingStatusThunk.rejected, (state, action) => {
+        state.moderatingListing = false;
+        state.moderationError = action.error.message || 'فشل في تحديث حالة الإعلان';
       });
 
     // جلب الإحصائيات

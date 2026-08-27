@@ -277,16 +277,23 @@ export async function deleteListing(listingId: string, sellerId?: string): Promi
 }
 
 /**
- * Increment listing views count
+ * Increment listing views count and log a view event for period stats
  */
 export async function incrementListingViews(listingId: string): Promise<void> {
   try {
     const firestore = getFirebaseFirestore();
     const listingRef = doc(firestore, 'listings', listingId);
-    
+
     await updateDoc(listingRef, {
       views: increment(1),
       updatedAt: serverTimestamp(),
+    });
+
+    const dateKey = new Date().toISOString().slice(0, 10);
+    await addDoc(collection(firestore, 'listing-views'), {
+      listingId,
+      dateKey,
+      createdAt: serverTimestamp(),
     });
   } catch (error: any) {
     // Don't throw error for view increment failures, just log

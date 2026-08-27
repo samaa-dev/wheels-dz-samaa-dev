@@ -41,7 +41,7 @@ function ListingDetail() {
   const { id } = Route.useParams();
   const all = useAllListings();
   const listing = all.find((l) => l.id === id);
-  const { pushRecent, registerView, views, isFavorite, toggleFavorite, revealContact } = useApp();
+  const { pushRecent, registerView, isFavorite, toggleFavorite, revealContact } = useApp();
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [phoneShown, setPhoneShown] = useState(false);
@@ -82,7 +82,7 @@ function ListingDetail() {
   const displayCount = sellerRating.count > 0 ? sellerRating.count : seller.reviews;
   const otherListings = all.filter((l) => (l.ownerId || l.sellerId) === seller.id).length;
   const images = listing.imageUrls.length ? listing.imageUrls : listing.images;
-  const totalViews = listing.views + (views[listing.id] ?? 0);
+  const totalViews = listing.views;
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const copyLink = async () => {

@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, Pause, Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useApp } from "@/hooks/useApp";
 import { STATUS_LABEL, type ListingStatus } from "@/lib/data/catalog";
 import { hasPermission } from "@/lib/auth/permissions";
-import { timeAgo } from "@/lib/format";
+import { formatNumber, timeAgo } from "@/lib/format";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   approveListingThunk,
@@ -18,6 +18,7 @@ import {
   rejectListingThunk,
   selectAdminListings,
   selectAdminListingsLoading,
+  setAdminListingStatusThunk,
   setListingsStatusFilter,
 } from "@/store/slices/adminSlice";
 
@@ -39,6 +40,9 @@ function AdminListingsPage() {
 
   const canApprove = user ? hasPermission(user, "listings:approve") : false;
   const canFeature = user ? hasPermission(user, "listings:feature") : false;
+  const canModerateStatus =
+    !!user &&
+    (hasPermission(user, "listings:edit:any") || hasPermission(user, "listings:approve"));
 
   const load = () => {
     if (!user) return;
@@ -68,6 +72,18 @@ function AdminListingsPage() {
     }
   };
 
+  const onToggleStatus = async (listingId: string, next: "active" | "inactive") => {
+    if (!user) return;
+    const result = await dispatch(
+      setAdminListingStatusThunk({ currentUser: user, listingId, status: next }),
+    );
+    if (setAdminListingStatusThunk.fulfilled.match(result)) {
+      toast.success(next === "active" ? "تم تفعيل الإعلان" : "تم إيقاف الإعلان");
+    } else {
+      toast.error(result.error.message || "تعذّر تحديث الحالة");
+    }
+  };
+
   const onReject = async () => {
     if (!user || !rejectId || !rejectReason.trim()) {
       toast.error("أدخل سبب الرفض");
@@ -89,7 +105,7 @@ function AdminListingsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-black">إدارة الإعلانات</h2>
-        <p className="text-sm text-muted-foreground">قبول أو رفض الإعلانات المعلقة ومراجعة الحالات الأخرى</p>
+        <p className="text-sm text-muted-foreground">قبول، رفض، إيقاف أو تفعيل الإعلانات</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -103,6 +119,7 @@ function AdminListingsPage() {
           <SelectContent>
             <SelectItem value="pending">قيد المراجعة</SelectItem>
             <SelectItem value="active">نشط</SelectItem>
+            <SelectItem value="inactive">متوقف</SelectItem>
             <SelectItem value="blocked">مرفوض</SelectItem>
             <SelectItem value="deleted">محذوف</SelectItem>
             <SelectItem value="all">الكل</SelectItem>
@@ -145,41 +162,63 @@ function AdminListingsPage() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {l.ownerName} · {l.wilaya}
-                  {l.size ? ` · ${l.size}` : ""} · {timeAgo(l.createdAt)}
+                  {l.size ? ` · ${l.size}` : ""} · {timeAgo(l.createdAt)} · {formatNumber(l.views)} زيارة
                 </p>
               </div>
-              {canApprove && l.status === "pending" && (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    className="h-10 gap-1"
-                    disabled={moderating}
-                    onClick={() => onApprove(l.id, false)}
-                  >
-                    <Check className="size-4" /> اعتماد
-                  </Button>
-                  {canFeature && (
+              <div className="flex flex-wrap gap-2">
+                {canApprove && l.status === "pending" && (
+                  <>
+                    <Button
+                      className="h-10 gap-1"
+                      disabled={moderating}
+                      onClick={() => onApprove(l.id, false)}
+                    >
+                      <Check className="size-4" /> اعتماد
+                    </Button>
+                    {canFeature && (
+                      <Button
+                        variant="outline"
+                        className="h-10"
+                        disabled={moderating}
+                        onClick={() => onApprove(l.id, true)}
+                      >
+                        اعتماد + تمييز
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
-                      className="h-10"
+                      className="h-10 gap-1 text-destructive"
                       disabled={moderating}
-                      onClick={() => onApprove(l.id, true)}
+                      onClick={() => {
+                        setRejectId(l.id);
+                        setRejectReason("");
+                      }}
                     >
-                      اعتماد + تمييز
+                      <X className="size-4" /> رفض
                     </Button>
-                  )}
+                  </>
+                )}
+                {canModerateStatus && l.status === "active" && (
                   <Button
                     variant="outline"
-                    className="h-10 gap-1 text-destructive"
+                    className="h-10 gap-1"
                     disabled={moderating}
-                    onClick={() => {
-                      setRejectId(l.id);
-                      setRejectReason("");
-                    }}
+                    onClick={() => onToggleStatus(l.id, "inactive")}
                   >
-                    <X className="size-4" /> رفض
+                    <Pause className="size-4" /> إيقاف
                   </Button>
-                </div>
-              )}
+                )}
+                {canModerateStatus && (l.status === "inactive" || l.status === "blocked") && (
+                  <Button
+                    variant="outline"
+                    className="h-10 gap-1"
+                    disabled={moderating}
+                    onClick={() => onToggleStatus(l.id, "active")}
+                  >
+                    <Play className="size-4" /> تفعيل
+                  </Button>
+                )}
+              </div>
             </Card>
           ))}
         </div>

@@ -72,14 +72,22 @@ export const BRAND_MODEL_EXAMPLES: Record<string, string> = {
   Continental: "PremiumContact 6",
   Pirelli: "P Zero",
   Bridgestone: "Turanza T005",
-  Goodyear: "EfficientGrip",
-  Dunlop: "Sport Maxx",
-  Hankook: "Ventus Prime",
+  Goodyear: "EfficientGrip Performance",
+  Dunlop: "Sport Maxx RT2",
+  Hankook: "Ventus Prime 4",
   Kumho: "Ecsta PS71",
   Nexen: "N'Fera SU1",
-  Yokohama: "Advan Sport",
-  أخرى: "اسم الموديل",
+  Yokohama: "Advan Sport V105",
+  أخرى: "Primacy 4",
 };
+
+/** Placeholder واضح لحقل الموديل حسب الماركة */
+export function getModelPlaceholder(brand?: string): string {
+  if (brand && BRAND_MODEL_EXAMPLES[brand]) {
+    return `مثال: ${BRAND_MODEL_EXAMPLES[brand]}`;
+  }
+  return "مثال: Pilot Sport 4 أو Turanza T005";
+}
 
 export const SIZE_EXAMPLE = "205/55 R16";
 

@@ -22,6 +22,7 @@ import {
   updateListingStatusThunk,
   deleteListingThunk,
   createListingThunk,
+  incrementViewsThunk,
 } from '../store/slices/listingsSlice';
 import { MOCK_LISTINGS, type Listing } from '../lib/data/mock';
 
@@ -133,7 +134,13 @@ export function useApp() {
 
   const registerViewFunc = useMemo(() => {
     return (id: string) => {
+      if (typeof window !== 'undefined') {
+        const key = `dw.viewed.${id}`;
+        if (sessionStorage.getItem(key)) return;
+        sessionStorage.setItem(key, '1');
+      }
       dispatch(registerView(id));
+      void dispatch(incrementViewsThunk(id));
     };
   }, [dispatch]);
 

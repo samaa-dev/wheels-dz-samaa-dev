@@ -88,10 +88,11 @@ export interface AdminStats {
     reported: number;
     featuredCount: number;
   };
-  messages: {
-    total: number;
-    todayCount: number;
-    reportedCount: number;
+  views: {
+    allTime: number;
+    today: number;
+    last7Days: number;
+    last30Days: number;
   };
   system: {
     uptime: number;
@@ -627,6 +628,108 @@ export async function getAdminListings(
   }
 }
 
+/**
+ * إيقاف أو تفعيل إعلان من لوحة الإدارة
+ */
+export async function setAdminListingStatus(
+  currentUser: AuthUser,
+  listingId: string,
+  status: 'active' | 'inactive',
+): Promise<void> {
+  try {
+    if (
+      !hasPermission(currentUser, 'listings:edit:any') &&
+      !hasPermission(currentUser, 'listings:approve')
+    ) {
+      throw new Error('ليس لديك صلاحية لتغيير حالة الإعلان');
+    }
+
+    const firestore = getFirebaseFirestore();
+    await updateDoc(doc(firestore, 'listings', listingId), {
+      status,
+      updatedAt: serverTimestamp(),
+    });
+
+    await logUserActivity({
+      userId: currentUser.id,
+      userName: currentUser.displayName,
+      action: status === 'active' ? 'listing_activated' : 'listing_deactivated',
+      details: `Set listing ${listingId} to ${status}`,
+    });
+  } catch (error: any) {
+    console.error('Error setting listing status:', error);
+    if (error instanceof Error && !('code' in error)) throw error;
+    throw new Error(mapFirebaseErrorToArabic(error));
+  }
+}
+
+export type ViewsPeriod = 'today' | '7d' | '30d' | 'all';
+
+function dateKeyDaysAgo(days: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * عدد الزيارات حسب الفترة (من سجل listing-views أو إجمالي views)
+ */
+export async function getViewsInPeriod(
+  currentUser: AuthUser,
+  period: ViewsPeriod,
+): Promise<{ total: number; byDay: { date: string; count: number }[] }> {
+  try {
+    if (!hasPermission(currentUser, 'stats:view:detailed')) {
+      throw new Error('ليس لديك صلاحية لعرض إحصائيات الزيارات');
+    }
+
+    const firestore = getFirebaseFirestore();
+
+    if (period === 'all') {
+      const listingsSnapshot = await getDocs(collection(firestore, 'listings'));
+      const allTime = listingsSnapshot.docs.reduce((sum, d) => sum + (Number(fields(d.data())['views']) || 0), 0);
+      return { total: allTime, byDay: [] };
+    }
+
+    const startKey =
+      period === 'today' ? dateKeyDaysAgo(0) : period === '7d' ? dateKeyDaysAgo(6) : dateKeyDaysAgo(29);
+
+    let snapshot;
+    try {
+      snapshot = await getDocs(
+        query(
+          collection(firestore, 'listing-views'),
+          where('dateKey', '>=', startKey),
+          orderBy('dateKey', 'asc'),
+        ),
+      );
+    } catch {
+      snapshot = await getDocs(collection(firestore, 'listing-views'));
+    }
+
+    const byDayMap = new Map<string, number>();
+    let total = 0;
+    for (const docSnap of snapshot.docs) {
+      const data = fields(docSnap.data());
+      const key = String(data['dateKey'] || '');
+      if (!key || key < startKey) continue;
+      total += 1;
+      byDayMap.set(key, (byDayMap.get(key) || 0) + 1);
+    }
+
+    const byDay = [...byDayMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
+
+    return { total, byDay };
+  } catch (error: any) {
+    console.error('Error getting views in period:', error);
+    if (error instanceof Error && !('code' in error)) throw error;
+    throw new Error(mapFirebaseErrorToArabic(error));
+  }
+}
+
 // ===== Activity & Logging Functions =====
 
 /**
@@ -717,29 +820,41 @@ export async function getAdminStats(currentUser: AuthUser): Promise<AdminStats> 
       reported: listings.filter(l => l.reportCount > 0).length,
       featuredCount: listings.filter(l => l.isPromoted).length,
     };
-    
-    // عد الرسائل
-    const messagesSnapshot = await getDocs(collection(firestore, 'messages'));
-    const messages = messagesSnapshot.docs.map(docSnap => fields(docSnap.data()));
-    
-    const today = new Date().toDateString();
-    const messageStats = {
-      total: messages.length,
-      todayCount: messages.filter(m => {
-        const messageDate = m.createdAt?.toDate?.()?.toDateString();
-        return messageDate === today;
-      }).length,
-      reportedCount: messages.filter(m => m.isReported).length,
-    };
-    
+
+    const allTimeViews = listings.reduce((sum, l) => sum + (Number(l.views) || 0), 0);
+
+    let todayViews = 0;
+    let last7Views = 0;
+    let last30Views = 0;
+    try {
+      const viewsSnap = await getDocs(collection(firestore, 'listing-views'));
+      const todayKey = dateKeyDaysAgo(0);
+      const key7 = dateKeyDaysAgo(6);
+      const key30 = dateKeyDaysAgo(29);
+      for (const docSnap of viewsSnap.docs) {
+        const key = String(fields(docSnap.data())['dateKey'] || '');
+        if (!key) continue;
+        if (key === todayKey) todayViews += 1;
+        if (key >= key7) last7Views += 1;
+        if (key >= key30) last30Views += 1;
+      }
+    } catch (viewsErr) {
+      console.warn('Could not load listing-views stats:', viewsErr);
+    }
+
     return {
       users: userStats,
       listings: listingStats,
-      messages: messageStats,
+      views: {
+        allTime: allTimeViews,
+        today: todayViews,
+        last7Days: last7Views,
+        last30Days: last30Views,
+      },
       system: {
-        uptime: 0, // يتم حسابه من مصادر أخرى
-        storageUsed: 0, // يتم حسابه من Firebase Storage
-        databaseSize: 0, // يتم حسابه من Firestore
+        uptime: 0,
+        storageUsed: 0,
+        databaseSize: 0,
       },
     };
   } catch (error: any) {
