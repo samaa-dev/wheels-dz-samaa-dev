@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Heart, LogOut, Menu, PlusCircle, Search, User2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { LiveListingsToggle } from "@/components/listings/LiveListingsToggle";
 import { Button } from "@/components/ui/button";
@@ -34,16 +34,40 @@ export function Header() {
   const [open, setOpen] = useState(false);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const showAdmin = isModeratorOrAdmin(user);
+  const urlQ = useRouterState({
+    select: (s) => {
+      const search = s.location.search as { q?: unknown };
+      return typeof search?.q === "string" ? search.q : "";
+    },
+  });
+
+  useEffect(() => {
+    setQ(urlQ);
+  }, [urlQ]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate({ to: "/listings", search: { q: q || undefined } });
+    navigate({ to: "/listings", search: (prev) => ({ ...prev, q: q.trim() || undefined, page: 1 }) });
     setOpen(false);
   };
 
+  const searchField = (
+    <>
+      <Search className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="ابحث عن إطارات، ماركة..."
+        className="h-10 pe-10"
+        aria-label="بحث"
+      />
+    </>
+  );
+
   return (
     <header className="no-print sticky top-0 z-50 w-full border-b border-border/80 bg-background/90 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 md:h-16 md:gap-4">
+      <div className="mx-auto max-w-7xl">
+      <div className="flex h-14 items-center gap-3 px-4 md:h-16 md:gap-4">
         {/* Brand — right in RTL */}
         <Link
           to="/"
@@ -64,14 +88,7 @@ export function Header() {
           onSubmit={submit}
           className="relative hidden min-w-0 flex-1 md:block md:max-w-md lg:max-w-lg"
         >
-          <Search className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="ابحث عن إطارات، ماركة..."
-            className="h-10 pe-10"
-            aria-label="بحث"
-          />
+          {searchField}
         </form>
 
         {/* Desktop nav */}
@@ -280,6 +297,11 @@ export function Header() {
             </nav>
           </SheetContent>
         </Sheet>
+      </div>
+
+      <form onSubmit={submit} className="relative px-4 pb-3 md:hidden">
+        {searchField}
+      </form>
       </div>
     </header>
   );

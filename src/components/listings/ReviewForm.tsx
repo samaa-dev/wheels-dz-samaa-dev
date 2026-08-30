@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/hooks/useApp";
 import { hasUserReviewedSeller, submitReview } from "@/lib/firebase/reviews";
+import { getModerationSettings } from "@/lib/firebase/settings";
 
 type ReviewFormProps = {
   sellerId: string;
@@ -19,6 +20,7 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [reviewsNeedApproval, setReviewsNeedApproval] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -26,12 +28,15 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
       setChecking(false);
       return;
     }
-    hasUserReviewedSeller(sellerId, user.id).then((exists) => {
-      if (active) {
-        setAlreadyReviewed(exists);
-        setChecking(false);
-      }
-    });
+    Promise.all([hasUserReviewedSeller(sellerId, user.id), getModerationSettings()]).then(
+      ([exists, settings]) => {
+        if (active) {
+          setAlreadyReviewed(exists);
+          setReviewsNeedApproval(settings.reviewsRequireApproval);
+          setChecking(false);
+        }
+      },
+    );
     return () => {
       active = false;
     };
@@ -56,7 +61,9 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
   if (alreadyReviewed) {
     return (
       <p className="text-sm text-muted-foreground">
-        لقد أرسلت تقييماً لهذا البائع. سيظهر بعد موافقة الإدارة.
+        {reviewsNeedApproval
+          ? "لقد أرسلت تقييماً لهذا البائع. سيظهر بعد موافقة الإدارة."
+          : "لقد قيّمت هذا البائع مسبقاً."}
       </p>
     );
   }
@@ -72,7 +79,7 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
     }
     setSubmitting(true);
     try {
-      await submitReview({
+      const created = await submitReview({
         sellerId,
         reviewerId: user.id,
         reviewerName: user.displayName || user.name || "مستخدم",
@@ -80,7 +87,12 @@ export function ReviewForm({ sellerId, onSubmitted }: ReviewFormProps) {
         comment,
       });
       setAlreadyReviewed(true);
-      toast.success("تم إرسال تقييمك. سيظهر بعد موافقة الإدارة.");
+      setReviewsNeedApproval(created.status === "pending");
+      toast.success(
+        created.status === "approved"
+          ? "تم نشر تقييمك"
+          : "تم إرسال تقييمك. سيظهر بعد موافقة الإدارة.",
+      );
       onSubmitted?.();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "تعذّر إرسال التقييم");

@@ -38,7 +38,15 @@ const WILAYA_OPTIONS = WILAYAS.map((w) => ({
 const BRAND_OPTIONS = BRANDS.map((b) => ({ value: b, label: b }));
 const SIZE_OPTIONS = SIZES.map((s) => ({ value: s, label: s, keywords: s.replace(/\s/g, "") }));
 
-export function FiltersPanel({ value, onChange }: { value: Filters; onChange: (next: Filters) => void }) {
+export function FiltersPanel({
+  value,
+  onChange,
+  hideQuery = false,
+}: {
+  value: Filters;
+  onChange: (next: Filters) => void;
+  hideQuery?: boolean;
+}) {
   const [mounted, setMounted] = useState(false);
 
   const set = <K extends keyof Filters>(key: K, v: Filters[K]) => onChange({ ...value, [key]: v });
@@ -52,10 +60,12 @@ export function FiltersPanel({ value, onChange }: { value: Filters; onChange: (n
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="filter-q">كلمة البحث</Label>
-        <Input id="filter-q" value={value.q} onChange={(e) => set("q", e.target.value)} placeholder="ماركة، مقاس..." className="h-11" />
-      </div>
+      {!hideQuery && (
+        <div className="space-y-2">
+          <Label htmlFor="filter-q">كلمة البحث</Label>
+          <Input id="filter-q" value={value.q} onChange={(e) => set("q", e.target.value)} placeholder="ماركة، مقاس..." className="h-11" />
+        </div>
+      )}
 
       <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
         <Label className="flex items-center gap-2 text-base font-bold text-primary">

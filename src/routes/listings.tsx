@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Filter, LayoutGrid, List, MapPin, PlusCircle, SearchX, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Filter, LayoutGrid, List, PlusCircle, SearchX } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { DemoListingsBanner } from "@/components/listings/DemoListingsBanner";
 import { ListingCard, ListingCardSkeleton } from "@/components/listings/ListingCard";
@@ -158,20 +158,16 @@ function ListingsPage() {
   };
 
   const panel = <FiltersPanel value={filters} onChange={applyFilters} />;
-
-  const wilayaLabel =
-    filters.wilaya === "all"
-      ? "كل الولايات"
-      : WILAYA_OPTIONS.find((w) => w.value === filters.wilaya)?.label ?? filters.wilaya;
+  const mobileFilters = <FiltersPanel value={filters} onChange={applyFilters} hideQuery />;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-5 sm:py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-black sm:text-2xl">تصفح الإعلانات</h1>
-          <p className="mt-1 text-sm text-muted-foreground">اعثر على الإطار المناسب من بين آلاف العروض.</p>
+          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">اعثر على الإطار المناسب من بين آلاف العروض.</p>
         </div>
-        <Button asChild className="h-11 gap-2 px-4 font-bold shadow-md sm:h-12 sm:px-6">
+        <Button asChild className="hidden h-11 gap-2 px-4 font-bold shadow-md sm:h-12 sm:px-6 lg:inline-flex">
           <Link to="/create-listing">
             <PlusCircle className="size-5" /> أضف إعلان
           </Link>
@@ -179,36 +175,24 @@ function ListingsPage() {
       </div>
       <DemoListingsBanner />
 
-      {/* Mobile: quick wilaya filter — always visible */}
-      <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-3 lg:hidden">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <LabelLike>
-            <MapPin className="size-4" />
-            الولاية
-          </LabelLike>
-          {filters.wilaya !== "all" && (
-            <button
-              type="button"
-              onClick={() => setWilayaQuick("all")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground"
-            >
-              <X className="size-3.5" />
-              مسح
-            </button>
-          )}
+      {/* Mobile: wilaya then add-listing, same row */}
+      <div className="mt-4 flex items-center gap-2 lg:hidden">
+        <div className="min-w-0 flex-1">
+          <SearchableSelect
+            value={filters.wilaya}
+            onValueChange={setWilayaQuick}
+            options={WILAYA_OPTIONS}
+            placeholder="الولاية"
+            searchPlaceholder="ابحث عن ولاية..."
+            allOption={{ value: "all", label: "كل الولايات" }}
+            triggerClassName="h-12 border-primary/30 bg-background text-sm font-semibold"
+          />
         </div>
-        <SearchableSelect
-          value={filters.wilaya}
-          onValueChange={setWilayaQuick}
-          options={WILAYA_OPTIONS}
-          placeholder="كل الولايات"
-          searchPlaceholder="ابحث عن ولاية..."
-          allOption={{ value: "all", label: "كل الولايات" }}
-          triggerClassName="h-12 border-primary/30 bg-background text-base font-semibold"
-        />
-        {filters.wilaya !== "all" && (
-          <p className="mt-2 truncate text-xs text-muted-foreground">محدد: {wilayaLabel}</p>
-        )}
+        <Button asChild className="h-12 shrink-0 gap-1.5 px-3 font-bold shadow-md">
+          <Link to="/create-listing">
+            <PlusCircle className="size-4" /> أضف إعلان
+          </Link>
+        </Button>
       </div>
 
       <div className="mt-4 grid gap-6 lg:mt-6 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -231,7 +215,7 @@ function ListingsPage() {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[min(100%,22rem)] overflow-y-auto p-4">
                   <SheetTitle className="mb-4 text-start">فلاتر إضافية</SheetTitle>
-                  {panel}
+                  {mobileFilters}
                 </SheetContent>
               </Sheet>
 
@@ -323,11 +307,5 @@ function ListingsPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function LabelLike({ children }: { children: ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-sm font-bold text-primary">{children}</span>
   );
 }

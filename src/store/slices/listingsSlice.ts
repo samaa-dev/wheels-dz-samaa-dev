@@ -73,7 +73,7 @@ export const createListingThunk = createAsyncThunk(
       throw new Error('أضف صورة واحدة على الأقل من جهازك');
     }
 
-    const listingId = await createListing({
+    const { id: listingId, status } = await createListing({
       ...listingData,
       imageUrls: [],
       images: [],
@@ -92,6 +92,7 @@ export const createListingThunk = createAsyncThunk(
     const createdListing: Listing = {
       ...listingData,
       id: listingId,
+      status,
       imageUrls,
       images: imageUrls,
       coverImageUrl,

@@ -23,6 +23,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminListingsRouteImport } from './routes/admin.listings'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminStatsRouteImport } from './routes/admin.stats'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as EditListingIdRouteImport } from './routes/edit-listing.$id'
@@ -98,6 +99,11 @@ const AdminReviewsRoute = AdminReviewsRouteImport.update({
   path: '/reviews',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminStatsRoute = AdminStatsRouteImport.update({
   id: '/stats',
   path: '/stats',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/listings': typeof AdminListingsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/edit-listing/$id': typeof EditListingIdRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/listings': typeof AdminListingsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/edit-listing/$id': typeof EditListingIdRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/listings': typeof AdminListingsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/edit-listing/$id': typeof EditListingIdRoute
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/listings'
     | '/admin/reviews'
+    | '/admin/settings'
     | '/admin/stats'
     | '/admin/users'
     | '/edit-listing/$id'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/listings'
     | '/admin/reviews'
+    | '/admin/settings'
     | '/admin/stats'
     | '/admin/users'
     | '/edit-listing/$id'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/listings'
     | '/admin/reviews'
+    | '/admin/settings'
     | '/admin/stats'
     | '/admin/users'
     | '/edit-listing/$id'
@@ -356,6 +368,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReviewsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/stats': {
       id: '/admin/stats'
       path: '/stats'
@@ -391,6 +410,7 @@ interface AdminRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminListingsRoute: typeof AdminListingsRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStatsRoute: typeof AdminStatsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -400,6 +420,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
   AdminListingsRoute: AdminListingsRoute,
   AdminReviewsRoute: AdminReviewsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminStatsRoute: AdminStatsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,

@@ -40,9 +40,9 @@ export function HeroSection({ wilaya, onWilayaChange, onSearch }: HeroSectionPro
             </span>
           </p>
           <h1 className="mt-3 text-2xl font-black leading-[1.25] tracking-tight text-white sm:mt-6 sm:text-4xl lg:text-5xl">
-            اعثر على الإطار المناسب
+            اعثر على مقاس العجلة المناسب في دقائق
             <span className="mt-1 block text-base font-bold text-amber-200/95 sm:mt-2 sm:text-2xl lg:text-3xl">
-              في دقائق، من كل الولايات
+              من كل الولايات
             </span>
           </h1>
           <p className="mt-2 hidden max-w-lg text-base leading-8 text-slate-200/90 sm:mt-4 sm:block sm:text-lg">

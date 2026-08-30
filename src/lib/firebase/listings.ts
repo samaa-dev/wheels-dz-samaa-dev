@@ -19,6 +19,7 @@ import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { mapFirebaseErrorToArabic } from './mapAuthError';
 import type { Listing } from '../data/mock';
 import { fields, toIso, toIsoOrNow } from './docData';
+import { getModerationSettings } from './settings';
 
 function omitUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -152,7 +153,7 @@ export async function fetchListingById(listingId: string): Promise<Listing | nul
 /**
  * Create new listing
  */
-export async function createListing(listingData: Omit<Listing, 'id' | 'createdAt' | 'views' | 'contactClicks' | 'favorites' | 'shareCount' | 'publishedAt'>): Promise<string> {
+export async function createListing(listingData: Omit<Listing, 'id' | 'createdAt' | 'views' | 'contactClicks' | 'favorites' | 'shareCount' | 'publishedAt'>): Promise<{ id: string; status: 'pending' | 'active' }> {
   try {
     const auth = getFirebaseAuth();
     const uid = auth.currentUser?.uid;
@@ -163,12 +164,16 @@ export async function createListing(listingData: Omit<Listing, 'id' | 'createdAt
     const firestore = getFirebaseFirestore();
     const listingsRef = collection(firestore, 'listings');
 
+    const moderation = await getModerationSettings();
+    const status = moderation.listingsRequireApproval ? 'pending' : 'active';
+
     // Always bind ownership to the signed-in Auth UID (rules check request.auth.uid)
     const ownerId = uid;
     const payload = omitUndefined({
       ...listingData,
       ownerId,
       sellerId: ownerId,
+      status,
       price: typeof listingData.price === 'number' ? listingData.price : 0,
       imageUrls: listingData.imageUrls ?? [],
       images: listingData.imageUrls ?? listingData.images ?? [],
@@ -178,14 +183,14 @@ export async function createListing(listingData: Omit<Listing, 'id' | 'createdAt
       favorites: 0,
       shareCount: 0,
       createdAt: serverTimestamp(),
-      publishedAt: listingData.status === 'active' ? serverTimestamp() : null,
+      publishedAt: status === 'active' ? serverTimestamp() : null,
       updatedAt: serverTimestamp(),
       featured: listingData.isPromoted ?? false,
     });
 
     const docRef = await addDoc(listingsRef, payload);
     
-    return docRef.id;
+    return { id: docRef.id, status };
   } catch (error: unknown) {
     const mapped = mapFirebaseErrorToArabic(error as import('firebase/app').FirebaseError);
     const code = error && typeof error === 'object' && 'code' in error ? String((error as { code: string }).code) : '';

@@ -48,6 +48,20 @@ service cloud.firestore {
     function isAdminStaff() {
       return isAdmin() || isAdminDoc();
     }
+
+    function moderationDoc() {
+      return /databases/$(database)/documents/settings/moderation;
+    }
+
+    function listingsRequireApproval() {
+      return !exists(moderationDoc())
+        || get(moderationDoc()).data.listingsRequireApproval != false;
+    }
+
+    function reviewsRequireApproval() {
+      return !exists(moderationDoc())
+        || get(moderationDoc()).data.reviewsRequireApproval != false;
+    }
     
     function isPublicListing(status) {
       return status == 'active';
@@ -109,7 +123,10 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
                        isOwner(request.resource.data.ownerId) &&
                        isValidListingData(request.resource.data) &&
-                       request.resource.data.status in ['active', 'pending'];
+                       (
+                         request.resource.data.status == 'pending' ||
+                         (!listingsRequireApproval() && request.resource.data.status == 'active')
+                       );
       
       // Owners may edit content / toggle active↔inactive; only staff can approve pending→active
       allow update: if (isOwner(resource.data.ownerId) && 
@@ -171,7 +188,10 @@ service cloud.firestore {
                        request.resource.data.rating is number &&
                        request.resource.data.rating >= 1 &&
                        request.resource.data.rating <= 5 &&
-                       request.resource.data.status == 'pending' &&
+                       (
+                         request.resource.data.status == 'pending' ||
+                         (!reviewsRequireApproval() && request.resource.data.status == 'approved')
+                       ) &&
                        request.resource.data.comment is string &&
                        request.resource.data.comment.size() <= 500;
 
@@ -240,6 +260,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
+    // ===== Platform settings (moderation flags) =====
+    match /settings/{id} {
+      allow read: if true;
+      allow create, update: if id == 'moderation' &&
+                               isAdminStaff() &&
+                               request.resource.data.listingsRequireApproval is bool &&
+                               request.resource.data.reviewsRequireApproval is bool;
+      allow delete: if false;
+    }
+
     // ===== Admin Collections =====
     
     match /user-activities/{activityId} {

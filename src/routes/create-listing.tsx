@@ -194,10 +194,14 @@ function CreateListingPage() {
         warranty: { hasWarranty: false },
         keywords: [] as string[],
       };
-      await createListing(listingData, imageFiles);
+      const created = await createListing(listingData, imageFiles);
       writeStore(STORAGE_KEYS.draft, EMPTY);
       setImageFiles([]);
-      toast.success("تم إرسال إعلانك للمراجعة — سيظهر بعد موافقة الإدارة");
+      toast.success(
+        created.status === "active"
+          ? "تم نشر إعلانك"
+          : "تم إرسال إعلانك للمراجعة — سيظهر بعد موافقة الإدارة",
+      );
       navigate({ to: "/my-listings" });
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "تعذّر نشر الإعلان، حاول مرة أخرى");

@@ -13,6 +13,7 @@ import {
 import { getFirebaseFirestore } from './config';
 import { mapFirebaseErrorToArabic } from './mapAuthError';
 import { fields, toIso } from './docData';
+import { getModerationSettings } from './settings';
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 
@@ -55,13 +56,16 @@ export async function submitReview(input: {
       throw new Error('لقد قيّمت هذا البائع مسبقاً');
     }
 
+    const moderation = await getModerationSettings();
+    const status: ReviewStatus = moderation.reviewsRequireApproval ? 'pending' : 'approved';
+
     const docRef = await addDoc(collection(firestore, 'reviews'), {
       sellerId: input.sellerId,
       reviewerId: input.reviewerId,
       reviewerName: input.reviewerName,
       rating: input.rating,
       comment: input.comment.trim(),
-      status: 'pending' as ReviewStatus,
+      status,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -73,7 +77,7 @@ export async function submitReview(input: {
       reviewerName: input.reviewerName,
       rating: input.rating,
       comment: input.comment.trim(),
-      status: 'pending',
+      status,
       createdAt: new Date().toISOString(),
     };
   } catch (error: unknown) {

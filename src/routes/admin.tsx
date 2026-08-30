@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Loader2,
   Megaphone,
+  Settings,
   Star,
   Users,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const ADMIN_NAV = [
   { to: "/admin/users", label: "المستخدمون", icon: Users },
   { to: "/admin/stats", label: "الإحصائيات", icon: ClipboardCheck },
   { to: "/admin/reviews", label: "التقييمات", icon: Star },
+  { to: "/admin/settings", label: "الإعدادات", icon: Settings },
 ] as const;
 
 function AdminLayout() {
